@@ -23,7 +23,7 @@ export const config = {
   rpcUrl: process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com",
 
   /** Network name */
-  network: process.env.SOLANA_NETWORK || "devnet",
+  network: process.env.SOLANA_NETWORK || "mainnet-beta",
 
   /** Max slippage in basis points (50 = 0.5%) */
   slippageBps: Number(process.env.SLIPPAGE_BPS || "50"),
