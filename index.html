@@ -188,6 +188,7 @@
       .modal { margin: 1rem; }
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -415,17 +416,25 @@
 
   <script>
     /* ══════════════════════════════════════
+       Supabase Client
+    ══════════════════════════════════════ */
+    const SUPABASE_URL = 'https://ktfnwdxrgdkrklctiexj.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_wOj6NbvDIrcM-Yt2pKbVAQ_xQJPXBP9';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    /* ══════════════════════════════════════
        State
     ══════════════════════════════════════ */
-    let token = localStorage.getItem('solbot_token');
-    let user = JSON.parse(localStorage.getItem('solbot_user') || 'null');
+    let token = null;
+    let user = null;
 
     /* ══════════════════════════════════════
        API Helper
     ══════════════════════════════════════ */
     async function api(path, opts = {}) {
+      const { data: { session } } = await supabaseClient.auth.getSession();
       const headers = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = 'Bearer ' + token;
+      if (session) headers['Authorization'] = 'Bearer ' + session.access_token;
       const res = await fetch(path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Request failed');
@@ -433,7 +442,7 @@
     }
 
     /* ══════════════════════════════════════
-       Auth
+       Auth (Supabase)
     ══════════════════════════════════════ */
     function openAuth(e) { if (e) e.preventDefault(); document.getElementById('auth-modal').classList.add('active'); }
     function closeAuth() { document.getElementById('auth-modal').classList.remove('active'); }
@@ -451,11 +460,12 @@
       const errEl = document.getElementById('login-error');
       errEl.style.display = 'none';
       try {
-        const data = await api('/api/auth/login', {
-          method: 'POST',
-          body: { email: document.getElementById('login-email').value, password: document.getElementById('login-password').value }
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email: document.getElementById('login-email').value,
+          password: document.getElementById('login-password').value
         });
-        setSession(data);
+        if (error) throw error;
+        setSession(data.session);
       } catch (err) { errEl.textContent = err.message; errEl.style.display = 'block'; }
     }
 
@@ -464,29 +474,49 @@
       const errEl = document.getElementById('reg-error');
       errEl.style.display = 'none';
       try {
-        const data = await api('/api/auth/register', {
-          method: 'POST',
-          body: { email: document.getElementById('reg-email').value, password: document.getElementById('reg-password').value }
+        const { data, error } = await supabaseClient.auth.signUp({
+          email: document.getElementById('reg-email').value,
+          password: document.getElementById('reg-password').value
         });
-        setSession(data);
-      } catch (err) { errEl.textContent = err.message; errEl.style.display = 'block'; }
+        if (error) throw error;
+        if (!data.session) {
+          errEl.textContent = 'Check your email for a confirmation link.';
+          errEl.style.color = 'var(--neon-green)';
+          errEl.style.display = 'block';
+          return;
+        }
+        setSession(data.session);
+      } catch (err) {
+        errEl.style.color = '';
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+      }
     }
 
-    function setSession(data) {
-      token = data.token;
-      user = data.user;
-      localStorage.setItem('solbot_token', token);
-      localStorage.setItem('solbot_user', JSON.stringify(user));
+    function setSession(session) {
+      if (!session) return;
+      token = session.access_token;
+      user = { id: session.user.id, email: session.user.email };
       closeAuth();
       showDashboard();
     }
 
-    function logout() {
+    async function logout() {
+      await supabaseClient.auth.signOut();
       token = null; user = null;
-      localStorage.removeItem('solbot_token');
-      localStorage.removeItem('solbot_user');
       showLanding();
     }
+
+    /* ── Keep state in sync with Supabase session ── */
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        token = session.access_token;
+        user = { id: session.user.id, email: session.user.email };
+      } else {
+        token = null;
+        user = null;
+      }
+    });
 
     /* ══════════════════════════════════════
        View Switching
@@ -646,11 +676,16 @@
     }
     fetchPrice(); setInterval(fetchPrice, 30000);
 
-    /* ── Init ── */
-    if (token && user) {
-      document.getElementById('nav-user').style.display = 'flex';
-      document.getElementById('nav-email').textContent = user.email;
-    }
+    /* ── Init: Restore Supabase session ── */
+    (async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        token = session.access_token;
+        user = { id: session.user.id, email: session.user.email };
+        document.getElementById('nav-user').style.display = 'flex';
+        document.getElementById('nav-email').textContent = user.email;
+      }
+    })();
   </script>
 </body>
 </html>

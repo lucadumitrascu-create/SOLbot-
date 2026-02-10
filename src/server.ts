@@ -2,8 +2,8 @@ import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import { config } from "./config";
 import { getConnection } from "./wallet";
-import { createToken, verifyToken, TokenPayload } from "./auth";
-import { createUser, authenticateUser, storePrivateKey, getUser, removePrivateKey } from "./store";
+import { supabase } from "./supabase-config";
+import { storePrivateKey, getUser, removePrivateKey, ensureLocalUser } from "./store";
 import { getUserBalance, custodialSendSol, custodialSwap, validatePrivateKey } from "./custodial";
 import { Connection } from "@solana/web3.js";
 
@@ -16,25 +16,39 @@ app.use(express.static(path.resolve(__dirname, "..")));
 let connection: Connection;
 
 // ══════════════════════════════════════════
-//  Auth Middleware
+//  Auth Middleware (Supabase)
 // ══════════════════════════════════════════
 
-interface AuthRequest extends Request {
-  user?: TokenPayload;
+interface AuthPayload {
+  userId: string;
+  email: string;
 }
 
-function authRequired(req: AuthRequest, res: Response, next: NextFunction) {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Authorization required" });
+interface AuthRequest extends Request {
+  user?: AuthPayload;
+}
+
+async function authRequired(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const header = req.headers.authorization;
+    if (!header || !header.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authorization required" });
+    }
+    const accessToken = header.slice(7);
+
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+    if (error || !user) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    // Auto-create local user record if needed
+    ensureLocalUser(user.id, user.email || "");
+
+    req.user = { userId: user.id, email: user.email || "" };
+    next();
+  } catch {
+    res.status(401).json({ error: "Authentication failed" });
   }
-  const token = header.slice(7);
-  const payload = verifyToken(token);
-  if (!payload) {
-    return res.status(401).json({ error: "Invalid or expired token" });
-  }
-  req.user = payload;
-  next();
 }
 
 // ══════════════════════════════════════════
@@ -45,50 +59,8 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", network: config.network, uptime: process.uptime() });
 });
 
-// ── Register ──
-app.post("/api/auth/register", (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: "email and password required" });
-    }
-    if (password.length < 8) {
-      return res.status(400).json({ error: "Password must be at least 8 characters" });
-    }
-    const user = createUser(email, password);
-    const token = createToken(user.id, user.email);
-    res.json({
-      token,
-      user: { id: user.id, email: user.email, publicAddress: user.publicAddress },
-    });
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-// ── Login ──
-app.post("/api/auth/login", (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: "email and password required" });
-    }
-    const user = authenticateUser(email, password);
-    if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-    const token = createToken(user.id, user.email);
-    res.json({
-      token,
-      user: { id: user.id, email: user.email, publicAddress: user.publicAddress },
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ══════════════════════════════════════════
-//  Protected Routes (require JWT)
+//  Protected Routes (require Supabase auth)
 // ══════════════════════════════════════════
 
 // ── Store private key ──
@@ -201,6 +173,7 @@ async function start() {
   console.log("\n  SOLbot - Custodial Trading Engine\n");
   connection = getConnection();
   console.log(`  Network   : ${config.network}`);
+  console.log(`  Auth      : Supabase`);
   console.log(`  Storage   : Local (operator-controlled)`);
 
   app.listen(PORT, "0.0.0.0", () => {
