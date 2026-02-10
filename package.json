@@ -2,21 +2,25 @@
   "name": "solbot",
   "version": "1.0.0",
   "description": "Solana trading bot with secure key management",
-  "main": "dist/index.js",
+  "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts"
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts",
+    "bot": "ts-node src/index.ts",
+    "deploy": "bash deploy.sh"
   },
   "dependencies": {
     "@solana/web3.js": "^1.95.0",
     "@solana/spl-token": "^0.4.0",
     "bs58": "^6.0.0",
-    "dotenv": "^16.4.0"
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
     "ts-node": "^10.9.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "@types/express": "^5.0.0"
   }
 }
