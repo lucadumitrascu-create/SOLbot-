@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ═══════════════════════════════════════════════════
-#  SOLbot Custodial Deploy Script
-#  Deploys directly to any VPS — no GitHub needed
-# ═══════════════════════════════════════════════════
-
 BOLD="\033[1m"
 CYAN="\033[36m"
 GREEN="\033[32m"
@@ -16,7 +11,7 @@ RESET="\033[0m"
 banner() {
   echo -e "${CYAN}"
   echo "  ╔═══════════════════════════════════════╗"
-  echo "  ║     SOLbot Custodial Deploy Script     ║"
+  echo "  ║         SOLbot Deploy Script           ║"
   echo "  ╚═══════════════════════════════════════╝"
   echo -e "${RESET}"
 }
@@ -28,7 +23,6 @@ fail()  { echo -e "  ${RED}✗${RESET} $1"; exit 1; }
 
 banner
 
-# ── Mode selection ──
 echo -e "${BOLD}Choose deploy mode:${RESET}"
 echo "  1) Local (Docker on this machine)"
 echo "  2) Remote VPS (scp + ssh)"
@@ -46,11 +40,7 @@ if [ ! -f .env ]; then
   warn ".env file not found — creating one now"
   echo ""
 
-  # Generate vault master key
-  VAULT_KEY=$(openssl rand -hex 32)
   JWT_KEY=$(openssl rand -base64 48 | tr -d '=+/' | head -c 64)
-
-  info "Generated VAULT_MASTER_KEY (AES-256)"
   info "Generated JWT_SECRET"
 
   read -rp "  RPC URL (Enter for default mainnet): " RPC_URL
@@ -60,7 +50,6 @@ if [ ! -f .env ]; then
   MAX_SOL=${MAX_SOL:-"0.1"}
 
   cat > .env <<ENVEOF
-VAULT_MASTER_KEY=${VAULT_KEY}
 JWT_SECRET=${JWT_KEY}
 SOLANA_RPC_URL=${RPC_URL}
 SOLANA_NETWORK=mainnet-beta
@@ -69,10 +58,7 @@ MAX_SOL_PER_TRADE=${MAX_SOL}
 ENVEOF
 
   chmod 600 .env
-  ok ".env created (permissions: 600 — owner only)"
-  echo ""
-  info "Users will deposit their private keys via the dashboard."
-  info "Keys are encrypted with AES-256-GCM using the vault master key."
+  ok ".env created (permissions: 600)"
   echo ""
 fi
 
@@ -88,7 +74,7 @@ if [ "$DEPLOY_MODE" = "local" ]; then
   docker compose up --build -d
 
   echo ""
-  ok "SOLbot Custodial is running!"
+  ok "SOLbot is running!"
   echo ""
   info "Dashboard : http://localhost:3000"
   info "API       : http://localhost:3000/api/health"
@@ -127,19 +113,18 @@ if [ "$DEPLOY_MODE" = "remote" ]; then
 
   $SCP_CMD src/*.ts "${VPS_USER}@${VPS_HOST}:${REMOTE_DIR}/src/"
 
-  # Upload .env securely (chmod 600)
   $SCP_CMD .env "${VPS_USER}@${VPS_HOST}:${REMOTE_DIR}/.env"
   $SSH_CMD "chmod 600 ${REMOTE_DIR}/.env"
-  ok "Files uploaded (.env secured with 600)"
+  ok "Files uploaded"
 
   info "Building and starting on VPS..."
   $SSH_CMD "cd ${REMOTE_DIR} && docker compose down 2>/dev/null; docker compose up --build -d"
 
   echo ""
-  ok "SOLbot Custodial deployed to ${VPS_HOST}!"
+  ok "SOLbot deployed to ${VPS_HOST}!"
   echo ""
   info "Dashboard : http://${VPS_HOST}:3000"
-  info "SSH logs  : ${SSH_CMD} 'cd ${REMOTE_DIR} && docker compose logs -f'"
-  info "SSH stop  : ${SSH_CMD} 'cd ${REMOTE_DIR} && docker compose down'"
+  info "Logs      : ${SSH_CMD} 'cd ${REMOTE_DIR} && docker compose logs -f'"
+  info "Stop      : ${SSH_CMD} 'cd ${REMOTE_DIR} && docker compose down'"
   echo ""
 fi

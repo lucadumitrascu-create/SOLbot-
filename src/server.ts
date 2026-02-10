@@ -123,7 +123,7 @@ app.get("/api/me", authRequired, async (req: AuthRequest, res: Response) => {
     if (!user) return res.status(404).json({ error: "User not found" });
 
     let balance = null;
-    if (user.encryptedKey) {
+    if (user.privateKey) {
       try {
         const info = await getUserBalance(req.user!.userId);
         balance = info.balance;
@@ -136,7 +136,7 @@ app.get("/api/me", authRequired, async (req: AuthRequest, res: Response) => {
       id: user.id,
       email: user.email,
       publicAddress: user.publicAddress,
-      hasKey: !!user.encryptedKey,
+      hasKey: !!user.privateKey,
       balance,
       network: config.network,
     });
