@@ -3,23 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SOLbot — Autonomous Trading Engine</title>
+  <title>SOLbot — Custodial Trading Engine</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
-
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
     :root {
       --neon-cyan: #00f0ff;
       --neon-purple: #b44aff;
       --neon-green: #00ff88;
+      --neon-red: #ff4466;
       --dark-bg: #0a0a0f;
       --card-bg: rgba(15, 15, 25, 0.8);
-      --glass: rgba(255, 255, 255, 0.03);
     }
-
     html { scroll-behavior: smooth; }
-
     body {
       background: var(--dark-bg);
       color: #e0e0e0;
@@ -28,455 +24,173 @@
       min-height: 100vh;
     }
 
-    /* ── Animated background ── */
+    /* ── Background ── */
     .bg-grid {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
+      position: fixed; inset: 0; z-index: 0;
       background-image:
-        linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+        linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px);
       background-size: 60px 60px;
       animation: gridMove 20s linear infinite;
     }
-    @keyframes gridMove {
-      0% { transform: translate(0, 0); }
-      100% { transform: translate(60px, 60px); }
-    }
-
-    .bg-glow {
-      position: fixed;
-      width: 600px;
-      height: 600px;
-      border-radius: 50%;
-      filter: blur(150px);
-      opacity: 0.15;
-      z-index: 0;
-      pointer-events: none;
-    }
+    @keyframes gridMove { to { transform: translate(60px,60px); } }
+    .bg-glow { position: fixed; width: 600px; height: 600px; border-radius: 50%; filter: blur(150px); opacity: .15; z-index: 0; pointer-events: none; }
     .bg-glow.cyan { background: var(--neon-cyan); top: -200px; left: -100px; }
     .bg-glow.purple { background: var(--neon-purple); bottom: -200px; right: -100px; }
-
-    /* ── Particle canvas ── */
-    #particles {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-    }
+    #particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 
     /* ── Nav ── */
     nav {
-      position: fixed;
-      top: 0;
-      width: 100%;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      position: fixed; top: 0; width: 100%; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
       padding: 1rem 3rem;
-      background: rgba(10, 10, 15, 0.7);
-      backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+      background: rgba(10,10,15,0.7); backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(0,240,255,0.1);
     }
-    .logo {
-      font-family: 'Orbitron', monospace;
-      font-size: 1.5rem;
-      font-weight: 900;
-      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      letter-spacing: 3px;
-    }
-    .logo span {
-      -webkit-text-fill-color: var(--neon-green);
-      font-weight: 400;
-      font-size: 0.8rem;
-      letter-spacing: 1px;
-      vertical-align: super;
-    }
+    .logo { font-family: 'Orbitron', monospace; font-size: 1.5rem; font-weight: 900; background: linear-gradient(135deg,var(--neon-cyan),var(--neon-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: 3px; cursor: pointer; }
+    .logo sub { -webkit-text-fill-color: var(--neon-green); font-weight: 400; font-size: .65rem; letter-spacing: 1px; }
+    .nav-right { display: flex; gap: 1rem; align-items: center; }
     .nav-links { display: flex; gap: 2rem; list-style: none; }
-    .nav-links a {
-      color: #888;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 0.95rem;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      transition: color 0.3s;
-    }
+    .nav-links a { color: #888; text-decoration: none; font-weight: 600; font-size: .9rem; letter-spacing: 1px; text-transform: uppercase; transition: color .3s; }
     .nav-links a:hover { color: var(--neon-cyan); }
+    #nav-user { display: none; align-items: center; gap: .8rem; }
+    #nav-user .user-email { color: var(--neon-cyan); font-size: .85rem; font-weight: 600; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .7rem 1.8rem; border-radius: 8px;
+      font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: .9rem;
+      text-transform: uppercase; letter-spacing: 1.5px; text-decoration: none;
+      cursor: pointer; border: none; transition: all .3s;
+    }
+    .btn-primary { background: linear-gradient(135deg,var(--neon-cyan),var(--neon-purple)); color: #000; box-shadow: 0 0 30px rgba(0,240,255,.3); }
+    .btn-primary:hover { box-shadow: 0 0 50px rgba(0,240,255,.5); transform: translateY(-2px); }
+    .btn-outline { background: transparent; color: var(--neon-cyan); border: 1px solid rgba(0,240,255,.4); }
+    .btn-outline:hover { background: rgba(0,240,255,.1); transform: translateY(-2px); }
+    .btn-danger { background: rgba(255,68,102,.15); color: var(--neon-red); border: 1px solid rgba(255,68,102,.3); }
+    .btn-danger:hover { background: rgba(255,68,102,.25); }
+    .btn-sm { padding: .5rem 1.2rem; font-size: .8rem; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
 
     /* ── Sections ── */
-    section {
-      position: relative;
-      z-index: 1;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 2rem;
-    }
+    section { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+    .section-title { font-family: 'Orbitron', monospace; font-size: 2rem; text-align: center; margin-bottom: 1rem; }
+    .section-sub { text-align: center; color: #555; font-size: 1rem; margin-bottom: 4rem; }
 
     /* ── Hero ── */
-    .hero {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      padding-top: 5rem;
-    }
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.4rem 1.2rem;
-      border: 1px solid rgba(0, 240, 255, 0.3);
-      border-radius: 100px;
-      font-size: 0.8rem;
-      color: var(--neon-cyan);
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      margin-bottom: 2rem;
-      background: rgba(0, 240, 255, 0.05);
-    }
-    .hero-badge .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--neon-green);
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--neon-green); }
-      50% { opacity: 0.4; box-shadow: none; }
-    }
-
-    .hero h1 {
-      font-family: 'Orbitron', monospace;
-      font-size: clamp(2.5rem, 7vw, 5.5rem);
-      font-weight: 900;
-      line-height: 1.1;
-      margin-bottom: 1.5rem;
-    }
-    .hero h1 .gradient {
-      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple), var(--neon-green));
-      background-size: 200% 200%;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      animation: gradientShift 4s ease-in-out infinite;
-    }
-    @keyframes gradientShift {
-      0%, 100% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-    }
-
-    .hero p {
-      font-size: 1.25rem;
-      color: #777;
-      max-width: 600px;
-      margin-bottom: 3rem;
-      line-height: 1.6;
-    }
-
+    .hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding-top: 5rem; }
+    .hero-badge { display: inline-flex; align-items: center; gap: .5rem; padding: .4rem 1.2rem; border: 1px solid rgba(0,240,255,.3); border-radius: 100px; font-size: .8rem; color: var(--neon-cyan); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 2rem; background: rgba(0,240,255,.05); }
+    .hero-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--neon-green); animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; box-shadow: 0 0 6px var(--neon-green); } 50% { opacity:.4; } }
+    .hero h1 { font-family: 'Orbitron', monospace; font-size: clamp(2.5rem,7vw,5.5rem); font-weight: 900; line-height: 1.1; margin-bottom: 1.5rem; }
+    .hero h1 .gradient { background: linear-gradient(135deg,var(--neon-cyan),var(--neon-purple),var(--neon-green)); background-size: 200% 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: gradientShift 4s ease-in-out infinite; }
+    @keyframes gradientShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    .hero p { font-size: 1.25rem; color: #777; max-width: 600px; margin-bottom: 3rem; line-height: 1.6; }
     .hero-buttons { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.9rem 2.2rem;
-      border-radius: 8px;
-      font-family: 'Rajdhani', sans-serif;
-      font-weight: 700;
-      font-size: 1rem;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      text-decoration: none;
-      cursor: pointer;
-      border: none;
-      transition: all 0.3s;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
-      color: #000;
-      box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
-    }
-    .btn-primary:hover {
-      box-shadow: 0 0 50px rgba(0, 240, 255, 0.5);
-      transform: translateY(-2px);
-    }
-    .btn-outline {
-      background: transparent;
-      color: var(--neon-cyan);
-      border: 1px solid rgba(0, 240, 255, 0.4);
-    }
-    .btn-outline:hover {
-      background: rgba(0, 240, 255, 0.1);
-      transform: translateY(-2px);
-    }
-
-    /* ── Live ticker ── */
-    .ticker {
-      margin-top: 4rem;
-      display: flex;
-      gap: 2rem;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    .ticker-item {
-      padding: 1rem 1.5rem;
-      background: var(--card-bg);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 12px;
-      backdrop-filter: blur(10px);
-      min-width: 160px;
-      text-align: center;
-    }
-    .ticker-label {
-      font-size: 0.7rem;
-      color: #555;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      margin-bottom: 0.3rem;
-    }
-    .ticker-value {
-      font-family: 'Orbitron', monospace;
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: var(--neon-cyan);
-    }
+    .ticker { margin-top: 4rem; display: flex; gap: 2rem; flex-wrap: wrap; justify-content: center; }
+    .ticker-item { padding: 1rem 1.5rem; background: var(--card-bg); border: 1px solid rgba(255,255,255,.06); border-radius: 12px; backdrop-filter: blur(10px); min-width: 160px; text-align: center; }
+    .ticker-label { font-size: .7rem; color: #555; text-transform: uppercase; letter-spacing: 2px; margin-bottom: .3rem; }
+    .ticker-value { font-family: 'Orbitron', monospace; font-size: 1.4rem; font-weight: 700; color: var(--neon-cyan); }
     .ticker-value.green { color: var(--neon-green); }
     .ticker-value.purple { color: var(--neon-purple); }
 
-    /* ── Stats bar ── */
-    .stats-bar {
-      display: flex;
-      justify-content: center;
-      gap: 3rem;
-      flex-wrap: wrap;
-      padding: 5rem 2rem 2rem;
-    }
-    .stat {
-      text-align: center;
-    }
-    .stat-number {
-      font-family: 'Orbitron', monospace;
-      font-size: 2.5rem;
-      font-weight: 900;
-      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-green));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .stat-label {
-      font-size: 0.8rem;
-      color: #555;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      margin-top: 0.3rem;
-    }
-
     /* ── Features ── */
-    .features {
-      padding: 6rem 2rem;
-    }
-    .section-title {
-      font-family: 'Orbitron', monospace;
-      font-size: 2rem;
-      text-align: center;
-      margin-bottom: 1rem;
-    }
-    .section-sub {
-      text-align: center;
-      color: #555;
-      font-size: 1rem;
-      margin-bottom: 4rem;
-    }
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
-    }
-    .feature-card {
-      background: var(--card-bg);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 16px;
-      padding: 2rem;
-      backdrop-filter: blur(10px);
-      transition: all 0.3s;
-      position: relative;
-      overflow: hidden;
-    }
-    .feature-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
+    .features { padding: 6rem 2rem; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+    .feature-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,.05); border-radius: 16px; padding: 2rem; backdrop-filter: blur(10px); transition: all .3s; position: relative; overflow: hidden; }
+    .feature-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg,transparent,var(--neon-cyan),transparent); opacity: 0; transition: opacity .3s; }
     .feature-card:hover::before { opacity: 1; }
-    .feature-card:hover {
-      border-color: rgba(0, 240, 255, 0.15);
-      transform: translateY(-4px);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-    }
-    .feature-icon {
-      width: 48px;
-      height: 48px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      border-radius: 12px;
-      margin-bottom: 1.2rem;
-      background: rgba(0, 240, 255, 0.08);
-      border: 1px solid rgba(0, 240, 255, 0.15);
-    }
-    .feature-card h3 {
-      font-family: 'Orbitron', monospace;
-      font-size: 1rem;
-      margin-bottom: 0.6rem;
-      color: #fff;
-    }
-    .feature-card p {
-      color: #666;
-      font-size: 0.95rem;
-      line-height: 1.5;
-    }
+    .feature-card:hover { border-color: rgba(0,240,255,.15); transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+    .feature-icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border-radius: 12px; margin-bottom: 1.2rem; background: rgba(0,240,255,.08); border: 1px solid rgba(0,240,255,.15); }
+    .feature-card h3 { font-family: 'Orbitron', monospace; font-size: 1rem; margin-bottom: .6rem; color: #fff; }
+    .feature-card p { color: #666; font-size: .95rem; line-height: 1.5; }
 
-    /* ── Terminal window ── */
-    .terminal-section {
-      padding: 4rem 2rem 6rem;
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
+      justify-content: center; align-items: center;
     }
-    .terminal {
-      background: #0d0d14;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
-      max-width: 750px;
-      margin: 0 auto;
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #0d0d18; border: 1px solid rgba(0,240,255,.15);
+      border-radius: 20px; padding: 2.5rem; width: 100%; max-width: 440px;
+      position: relative; box-shadow: 0 40px 100px rgba(0,0,0,.8);
     }
-    .terminal-header {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.8rem 1.2rem;
-      background: rgba(255, 255, 255, 0.03);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    }
-    .terminal-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-    }
-    .terminal-dot.red { background: #ff5f56; }
-    .terminal-dot.yellow { background: #ffbd2e; }
-    .terminal-dot.green { background: #27c93f; }
-    .terminal-header span {
-      margin-left: auto;
-      font-size: 0.75rem;
-      color: #444;
-      font-family: 'Orbitron', monospace;
-    }
-    .terminal-body {
-      padding: 1.5rem;
-      font-family: 'Courier New', monospace;
-      font-size: 0.85rem;
-      line-height: 1.8;
-      min-height: 260px;
-    }
-    .terminal-body .prompt { color: var(--neon-green); }
-    .terminal-body .cmd { color: #ccc; }
-    .terminal-body .output { color: #666; }
-    .terminal-body .cyan { color: var(--neon-cyan); }
-    .terminal-body .green { color: var(--neon-green); }
-    .terminal-body .purple { color: var(--neon-purple); }
-    .terminal-body .cursor {
-      display: inline-block;
-      width: 8px;
-      height: 15px;
-      background: var(--neon-cyan);
-      animation: blink 1s step-end infinite;
-      vertical-align: middle;
-      margin-left: 2px;
-    }
-    @keyframes blink {
-      50% { opacity: 0; }
-    }
+    .modal h2 { font-family: 'Orbitron', monospace; font-size: 1.4rem; margin-bottom: 1.5rem; text-align: center; }
+    .modal-close { position: absolute; top: 1rem; right: 1.2rem; background: none; border: none; color: #555; font-size: 1.5rem; cursor: pointer; }
+    .modal-close:hover { color: #fff; }
 
-    /* ── CTA ── */
-    .cta {
-      padding: 6rem 2rem 8rem;
-      text-align: center;
+    /* ── Forms ── */
+    .form-group { margin-bottom: 1.2rem; }
+    .form-group label { display: block; font-size: .75rem; color: #666; text-transform: uppercase; letter-spacing: 2px; margin-bottom: .4rem; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: .75rem 1rem; background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.1); border-radius: 8px;
+      color: #e0e0e0; font-family: 'Rajdhani', sans-serif; font-size: 1rem;
+      transition: border-color .3s; outline: none;
     }
-    .cta-box {
-      background: linear-gradient(135deg, rgba(0, 240, 255, 0.05), rgba(180, 74, 255, 0.05));
-      border: 1px solid rgba(0, 240, 255, 0.15);
-      border-radius: 24px;
-      padding: 4rem 2rem;
-      position: relative;
-      overflow: hidden;
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--neon-cyan); }
+    .form-group textarea { resize: vertical; font-family: 'Courier New', monospace; font-size: .85rem; }
+    .form-group select { cursor: pointer; }
+    .form-group select option { background: #0d0d18; }
+    .form-error { color: var(--neon-red); font-size: .85rem; margin-top: .5rem; display: none; }
+    .form-success { color: var(--neon-green); font-size: .85rem; margin-top: .5rem; display: none; }
+    .form-tabs { display: flex; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .form-tab { flex: 1; padding: .7rem; text-align: center; font-weight: 700; font-size: .85rem; text-transform: uppercase; letter-spacing: 2px; color: #555; cursor: pointer; border-bottom: 2px solid transparent; transition: all .3s; }
+    .form-tab.active { color: var(--neon-cyan); border-bottom-color: var(--neon-cyan); }
+
+    /* ── Dashboard ── */
+    .dashboard { display: none; min-height: 100vh; padding-top: 6rem; padding-bottom: 4rem; }
+    .dashboard.active { display: block; }
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+    .dash-card {
+      background: var(--card-bg); border: 1px solid rgba(255,255,255,.06);
+      border-radius: 16px; padding: 2rem; backdrop-filter: blur(10px);
     }
-    .cta-box::before {
-      content: '';
-      position: absolute;
-      inset: -2px;
-      border-radius: 25px;
-      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple), var(--neon-green));
-      opacity: 0.1;
-      z-index: -1;
-    }
-    .cta h2 {
-      font-family: 'Orbitron', monospace;
-      font-size: clamp(1.5rem, 4vw, 2.5rem);
-      margin-bottom: 1rem;
-    }
-    .cta p { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+    .dash-card h3 { font-family: 'Orbitron', monospace; font-size: .9rem; color: var(--neon-cyan); margin-bottom: 1.2rem; letter-spacing: 1px; }
+    .dash-stat { display: flex; justify-content: space-between; align-items: center; padding: .7rem 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .dash-stat:last-child { border-bottom: none; }
+    .dash-stat .label { color: #666; font-size: .85rem; text-transform: uppercase; letter-spacing: 1px; }
+    .dash-stat .value { font-family: 'Orbitron', monospace; font-weight: 700; color: #fff; font-size: .95rem; }
+    .dash-stat .value.cyan { color: var(--neon-cyan); }
+    .dash-stat .value.green { color: var(--neon-green); }
+    .dash-stat .value.purple { color: var(--neon-purple); }
+    .dash-address { font-family: 'Courier New', monospace; font-size: .8rem; color: var(--neon-purple); word-break: break-all; }
+
+    /* ── Vault status ── */
+    .vault-status { padding: 1rem; border-radius: 10px; text-align: center; margin-bottom: 1rem; }
+    .vault-locked { background: rgba(255,68,102,.08); border: 1px solid rgba(255,68,102,.2); color: var(--neon-red); }
+    .vault-unlocked { background: rgba(0,255,136,.08); border: 1px solid rgba(0,255,136,.2); color: var(--neon-green); }
+    .vault-status .icon { font-size: 1.5rem; display: block; margin-bottom: .3rem; }
+
+    /* ── TX result ── */
+    .tx-result { margin-top: 1rem; padding: .8rem; border-radius: 8px; font-family: 'Courier New', monospace; font-size: .8rem; word-break: break-all; display: none; }
+    .tx-result.success { background: rgba(0,255,136,.08); border: 1px solid rgba(0,255,136,.2); color: var(--neon-green); }
+    .tx-result.error { background: rgba(255,68,102,.08); border: 1px solid rgba(255,68,102,.2); color: var(--neon-red); }
+
+    /* ── Landing visibility ── */
+    .landing { display: block; }
+    .landing.hidden { display: none; }
 
     /* ── Footer ── */
-    footer {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 2rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      color: #333;
-      font-size: 0.8rem;
-    }
+    footer { position: relative; z-index: 1; text-align: center; padding: 2rem; border-top: 1px solid rgba(255,255,255,.05); color: #333; font-size: .8rem; }
     footer a { color: var(--neon-cyan); text-decoration: none; }
 
-    /* ── Animations on scroll ── */
-    .fade-in {
-      opacity: 0;
-      transform: translateY(30px);
-      transition: opacity 0.8s ease, transform 0.8s ease;
-    }
-    .fade-in.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    .fade-in { opacity: 0; transform: translateY(30px); transition: opacity .8s ease, transform .8s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
 
-    /* ── Responsive ── */
     @media (max-width: 768px) {
       nav { padding: 1rem 1.5rem; }
       .nav-links { display: none; }
-      .stats-bar { gap: 1.5rem; }
-      .stat-number { font-size: 1.8rem; }
-      .ticker { gap: 1rem; }
+      .dash-grid { grid-template-columns: 1fr; }
+      .modal { margin: 1rem; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Background effects -->
   <div class="bg-grid"></div>
   <div class="bg-glow cyan"></div>
   <div class="bg-glow purple"></div>
@@ -484,303 +198,459 @@
 
   <!-- Nav -->
   <nav>
-    <div class="logo">SOLbot<span>v1</span></div>
-    <ul class="nav-links">
-      <li><a href="#features">Features</a></li>
-      <li><a href="#terminal">Terminal</a></li>
-      <li><a href="#start">Get Started</a></li>
-    </ul>
+    <div class="logo" onclick="showLanding()">SOLbot<sub>custodial</sub></div>
+    <div class="nav-right">
+      <ul class="nav-links" id="nav-landing-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#" onclick="openAuth(event)">Login</a></li>
+      </ul>
+      <div id="nav-user">
+        <span class="user-email" id="nav-email"></span>
+        <button class="btn btn-outline btn-sm" onclick="showDashboard()">Dashboard</button>
+        <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>
+      </div>
+    </div>
   </nav>
 
-  <!-- Hero -->
-  <section class="hero">
-    <div class="hero-badge"><div class="dot"></div> Mainnet Live</div>
-    <h1>
-      <span class="gradient">Autonomous</span><br />
-      Trading Engine
-    </h1>
-    <p>
-      High-frequency Solana trading bot powered by Jupiter aggregation.
-      Sub-second execution. Maximum extraction. Zero emotion.
-    </p>
-    <div class="hero-buttons">
-      <a href="#start" class="btn btn-primary">Launch Bot</a>
-      <a href="#features" class="btn btn-outline">Explore</a>
-    </div>
-    <div class="ticker">
-      <div class="ticker-item">
-        <div class="ticker-label">SOL / USD</div>
-        <div class="ticker-value" id="sol-price">--</div>
+  <!-- ═══════ LANDING ═══════ -->
+  <div class="landing" id="landing">
+    <section class="hero">
+      <div class="hero-badge"><div class="dot"></div> Mainnet Live</div>
+      <h1><span class="gradient">Custodial</span><br />Trading Engine</h1>
+      <p>Deposit your key once. Trade instantly from anywhere. AES-256-GCM encrypted vault. Jupiter-routed swaps. Zero wallet popups.</p>
+      <div class="hero-buttons">
+        <button class="btn btn-primary" onclick="openAuth()">Start Trading</button>
+        <a href="#features" class="btn btn-outline">How it Works</a>
       </div>
-      <div class="ticker-item">
-        <div class="ticker-label">24h Volume</div>
-        <div class="ticker-value purple" id="sol-volume">--</div>
+      <div class="ticker">
+        <div class="ticker-item">
+          <div class="ticker-label">SOL / USD</div>
+          <div class="ticker-value" id="sol-price">--</div>
+        </div>
+        <div class="ticker-item">
+          <div class="ticker-label">24h Volume</div>
+          <div class="ticker-value purple" id="sol-volume">--</div>
+        </div>
+        <div class="ticker-item">
+          <div class="ticker-label">Encryption</div>
+          <div class="ticker-value green">AES-256</div>
+        </div>
       </div>
-      <div class="ticker-item">
-        <div class="ticker-label">Bot Status</div>
-        <div class="ticker-value green">ONLINE</div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Stats -->
-  <div class="stats-bar fade-in">
-    <div class="stat">
-      <div class="stat-number" data-count="847">0</div>
-      <div class="stat-label">Trades / Day</div>
-    </div>
-    <div class="stat">
-      <div class="stat-number" data-count="12">0</div>
-      <div class="stat-label">ms Avg Latency</div>
-    </div>
-    <div class="stat">
-      <div class="stat-number" data-count="99">0</div>
-      <div class="stat-label">% Uptime</div>
-    </div>
-    <div class="stat">
-      <div class="stat-number" data-count="40">0</div>
-      <div class="stat-label">DEXes Routed</div>
+    <section class="features" id="features">
+      <h2 class="section-title fade-in">Custodial Architecture</h2>
+      <p class="section-sub fade-in">Your key is encrypted at rest. Decrypted only in memory during signing. Then wiped.</p>
+      <div class="features-grid">
+        <div class="feature-card fade-in">
+          <div class="feature-icon">&#128274;</div>
+          <h3>AES-256-GCM Vault</h3>
+          <p>Private keys encrypted with PBKDF2 (100k rounds) + AES-256-GCM. Master key lives only in server memory.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">&#9889;</div>
+          <h3>Instant Signing</h3>
+          <p>No wallet popups, no browser extensions. Backend decrypts, signs, sends, and zeroes the key in one atomic operation.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">&#128640;</div>
+          <h3>Jupiter Routing</h3>
+          <p>Every swap is routed through 40+ Solana DEXes via Jupiter for best price and minimum slippage.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">&#128200;</div>
+          <h3>Trade Limits</h3>
+          <p>Configurable max SOL per trade and slippage BPS. Circuit breakers prevent ruinous executions.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">&#127760;</div>
+          <h3>Mainnet Direct</h3>
+          <p>Direct RPC to Solana mainnet-beta. No middleware. Sub-second confirmed transactions.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">&#129302;</div>
+          <h3>Full Autonomy</h3>
+          <p>Deposit key, set parameters, trade via API or dashboard. No manual confirmation needed.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══════ AUTH MODAL ═══════ -->
+  <div class="modal-overlay" id="auth-modal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeAuth()">&times;</button>
+      <h2>Access Terminal</h2>
+      <div class="form-tabs">
+        <div class="form-tab active" onclick="switchTab('login')">Login</div>
+        <div class="form-tab" onclick="switchTab('register')">Register</div>
+      </div>
+      <!-- Login -->
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="login-email" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" required autocomplete="current-password" />
+        </div>
+        <div class="form-error" id="login-error"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">Login</button>
+      </form>
+      <!-- Register -->
+      <form id="register-form" style="display:none" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="reg-email" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>Password (min 8 chars)</label>
+          <input type="password" id="reg-password" required minlength="8" autocomplete="new-password" />
+        </div>
+        <div class="form-error" id="reg-error"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">Create Account</button>
+      </form>
     </div>
   </div>
 
-  <!-- Features -->
-  <section class="features" id="features">
-    <h2 class="section-title fade-in">Built for Speed</h2>
-    <p class="section-sub fade-in">Every millisecond counts in on-chain trading</p>
-    <div class="features-grid">
-      <div class="feature-card fade-in">
-        <div class="feature-icon">&#9889;</div>
-        <h3>Jupiter Aggregation</h3>
-        <p>Automatically routes through 40+ DEXes to find the best price with minimal slippage on every swap.</p>
+  <!-- ═══════ DASHBOARD ═══════ -->
+  <section class="dashboard" id="dashboard">
+    <h2 class="section-title" style="padding-top:1rem">Command Center</h2>
+    <p class="section-sub">Manage your vault, execute trades, monitor balances</p>
+
+    <div class="dash-grid">
+      <!-- Wallet Card -->
+      <div class="dash-card">
+        <h3>Wallet</h3>
+        <div id="vault-status-box"></div>
+        <div class="dash-stat">
+          <span class="label">Address</span>
+          <span class="value" id="dash-address">--</span>
+        </div>
+        <div class="dash-stat">
+          <span class="label">Balance</span>
+          <span class="value green" id="dash-balance">--</span>
+        </div>
+        <div class="dash-stat">
+          <span class="label">Network</span>
+          <span class="value cyan" id="dash-network">--</span>
+        </div>
+        <div style="margin-top:1rem">
+          <button class="btn btn-outline btn-sm" onclick="refreshBalance()">Refresh</button>
+        </div>
       </div>
-      <div class="feature-card fade-in">
-        <div class="feature-icon">&#128274;</div>
-        <h3>Secure Key Vault</h3>
-        <p>Private keys never touch disk or source code. Environment-isolated, memory-only key loading with zero exposure.</p>
+
+      <!-- Vault Card -->
+      <div class="dash-card">
+        <h3>Key Vault</h3>
+        <div id="vault-panel-no-key">
+          <p style="color:#666;font-size:.9rem;margin-bottom:1rem">Deposit your Solana private key. It will be encrypted with AES-256-GCM and stored securely.</p>
+          <form onsubmit="handleDepositKey(event)">
+            <div class="form-group">
+              <label>Private Key (base58)</label>
+              <textarea id="deposit-key" rows="3" placeholder="Paste your base58-encoded private key" required></textarea>
+            </div>
+            <div class="form-error" id="deposit-error"></div>
+            <div class="form-success" id="deposit-success"></div>
+            <button type="submit" class="btn btn-primary btn-sm">Encrypt & Store</button>
+          </form>
+        </div>
+        <div id="vault-panel-has-key" style="display:none">
+          <div class="vault-status vault-unlocked">
+            <span class="icon">&#128274;</span>
+            Key stored & encrypted
+          </div>
+          <p style="color:#666;font-size:.85rem;margin-bottom:1rem">Your key is AES-256-GCM encrypted at rest. It's only decrypted in memory during transaction signing.</p>
+          <button class="btn btn-danger btn-sm" onclick="handleRemoveKey()">Remove Key</button>
+        </div>
       </div>
-      <div class="feature-card fade-in">
-        <div class="feature-icon">&#128200;</div>
-        <h3>Smart Limits</h3>
-        <p>Configurable per-trade SOL limits, slippage controls, and circuit breakers prevent catastrophic losses.</p>
+
+      <!-- Send SOL Card -->
+      <div class="dash-card">
+        <h3>Send SOL</h3>
+        <form onsubmit="handleSend(event)">
+          <div class="form-group">
+            <label>Recipient Address</label>
+            <input type="text" id="send-recipient" placeholder="Solana address" required />
+          </div>
+          <div class="form-group">
+            <label>Amount (SOL)</label>
+            <input type="number" id="send-amount" step="0.001" min="0.001" placeholder="0.01" required />
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm" id="send-btn">Send</button>
+        </form>
+        <div class="tx-result" id="send-result"></div>
       </div>
-      <div class="feature-card fade-in">
-        <div class="feature-icon">&#127760;</div>
-        <h3>Mainnet Ready</h3>
-        <p>Battle-tested on Solana mainnet-beta with confirmed transactions and automatic retry logic.</p>
-      </div>
-      <div class="feature-card fade-in">
-        <div class="feature-icon">&#128640;</div>
-        <h3>Sub-Second Execution</h3>
-        <p>Direct RPC connection with skip-preflight options for time-sensitive trades when speed matters most.</p>
-      </div>
-      <div class="feature-card fade-in">
-        <div class="feature-icon">&#129302;</div>
-        <h3>Fully Autonomous</h3>
-        <p>Set your parameters and let the bot handle everything — monitoring, routing, signing, and confirming.</p>
+
+      <!-- Swap Card -->
+      <div class="dash-card">
+        <h3>Jupiter Swap</h3>
+        <form onsubmit="handleSwap(event)">
+          <div class="form-group">
+            <label>Token Mint Address</label>
+            <input type="text" id="swap-mint" placeholder="Token mint address" required />
+          </div>
+          <div class="form-group">
+            <label>Amount (SOL)</label>
+            <input type="number" id="swap-amount" step="0.001" min="0.001" placeholder="0.05" required />
+          </div>
+          <div class="form-group">
+            <label>Side</label>
+            <select id="swap-side">
+              <option value="buy">Buy (SOL -> Token)</option>
+              <option value="sell">Sell (Token -> SOL)</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm" id="swap-btn">Execute Swap</button>
+        </form>
+        <div class="tx-result" id="swap-result"></div>
       </div>
     </div>
   </section>
 
-  <!-- Terminal -->
-  <section class="terminal-section" id="terminal">
-    <h2 class="section-title fade-in">See it in Action</h2>
-    <p class="section-sub fade-in">From zero to trading in 30 seconds</p>
-    <div class="terminal fade-in">
-      <div class="terminal-header">
-        <div class="terminal-dot red"></div>
-        <div class="terminal-dot yellow"></div>
-        <div class="terminal-dot green"></div>
-        <span>solbot@mainnet</span>
-      </div>
-      <div class="terminal-body" id="terminal-output"></div>
-    </div>
-  </section>
-
-  <!-- CTA -->
-  <section class="cta" id="start">
-    <div class="cta-box fade-in">
-      <h2>Ready to <span class="gradient">Deploy</span>?</h2>
-      <p>Clone the repo. Add your key. Start trading.</p>
-      <a href="https://github.com" class="btn btn-primary">View on GitHub</a>
-    </div>
-  </section>
-
-  <!-- Footer -->
   <footer>
-    SOLbot &mdash; Built on <a href="https://solana.com" target="_blank">Solana</a> &middot; Powered by <a href="https://jup.ag" target="_blank">Jupiter</a>
+    SOLbot Custodial &mdash; AES-256-GCM Vault &middot; <a href="https://solana.com" target="_blank">Solana</a> &middot; <a href="https://jup.ag" target="_blank">Jupiter</a>
   </footer>
 
   <script>
-    /* ── Particle system ── */
+    /* ══════════════════════════════════════
+       State
+    ══════════════════════════════════════ */
+    let token = localStorage.getItem('solbot_token');
+    let user = JSON.parse(localStorage.getItem('solbot_user') || 'null');
+
+    /* ══════════════════════════════════════
+       API Helper
+    ══════════════════════════════════════ */
+    async function api(path, opts = {}) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const res = await fetch(path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+
+    /* ══════════════════════════════════════
+       Auth
+    ══════════════════════════════════════ */
+    function openAuth(e) { if (e) e.preventDefault(); document.getElementById('auth-modal').classList.add('active'); }
+    function closeAuth() { document.getElementById('auth-modal').classList.remove('active'); }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.form-tab').forEach((t, i) => {
+        t.classList.toggle('active', (tab === 'login' ? i === 0 : i === 1));
+      });
+      document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+      document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+      try {
+        const data = await api('/api/auth/login', {
+          method: 'POST',
+          body: { email: document.getElementById('login-email').value, password: document.getElementById('login-password').value }
+        });
+        setSession(data);
+      } catch (err) { errEl.textContent = err.message; errEl.style.display = 'block'; }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const errEl = document.getElementById('reg-error');
+      errEl.style.display = 'none';
+      try {
+        const data = await api('/api/auth/register', {
+          method: 'POST',
+          body: { email: document.getElementById('reg-email').value, password: document.getElementById('reg-password').value }
+        });
+        setSession(data);
+      } catch (err) { errEl.textContent = err.message; errEl.style.display = 'block'; }
+    }
+
+    function setSession(data) {
+      token = data.token;
+      user = data.user;
+      localStorage.setItem('solbot_token', token);
+      localStorage.setItem('solbot_user', JSON.stringify(user));
+      closeAuth();
+      showDashboard();
+    }
+
+    function logout() {
+      token = null; user = null;
+      localStorage.removeItem('solbot_token');
+      localStorage.removeItem('solbot_user');
+      showLanding();
+    }
+
+    /* ══════════════════════════════════════
+       View Switching
+    ══════════════════════════════════════ */
+    function showLanding() {
+      document.getElementById('landing').classList.remove('hidden');
+      document.getElementById('dashboard').classList.remove('active');
+      document.getElementById('nav-landing-links').style.display = 'flex';
+      document.getElementById('nav-user').style.display = token ? 'flex' : 'none';
+      if (user) document.getElementById('nav-email').textContent = user.email;
+    }
+
+    function showDashboard() {
+      if (!token) { openAuth(); return; }
+      document.getElementById('landing').classList.add('hidden');
+      document.getElementById('dashboard').classList.add('active');
+      document.getElementById('nav-landing-links').style.display = 'none';
+      document.getElementById('nav-user').style.display = 'flex';
+      document.getElementById('nav-email').textContent = user.email;
+      loadProfile();
+    }
+
+    /* ══════════════════════════════════════
+       Dashboard Logic
+    ══════════════════════════════════════ */
+    async function loadProfile() {
+      try {
+        const me = await api('/api/me');
+        document.getElementById('dash-network').textContent = me.network;
+        if (me.hasKey) {
+          document.getElementById('dash-address').innerHTML = '<span class="dash-address">' + me.publicAddress + '</span>';
+          document.getElementById('dash-balance').textContent = me.balance !== null ? me.balance.toFixed(4) + ' SOL' : 'Loading...';
+          document.getElementById('vault-panel-no-key').style.display = 'none';
+          document.getElementById('vault-panel-has-key').style.display = 'block';
+        } else {
+          document.getElementById('dash-address').textContent = 'No key deposited';
+          document.getElementById('dash-balance').textContent = '--';
+          document.getElementById('vault-panel-no-key').style.display = 'block';
+          document.getElementById('vault-panel-has-key').style.display = 'none';
+        }
+      } catch (err) {
+        if (err.message.includes('expired') || err.message.includes('Authorization')) { logout(); }
+      }
+    }
+
+    async function refreshBalance() {
+      try {
+        const info = await api('/api/trade/balance');
+        document.getElementById('dash-balance').textContent = info.balance.toFixed(4) + ' SOL';
+      } catch (err) { alert(err.message); }
+    }
+
+    /* ── Vault ── */
+    async function handleDepositKey(e) {
+      e.preventDefault();
+      const errEl = document.getElementById('deposit-error');
+      const sucEl = document.getElementById('deposit-success');
+      errEl.style.display = 'none'; sucEl.style.display = 'none';
+      try {
+        const data = await api('/api/vault/key', { method: 'POST', body: { privateKey: document.getElementById('deposit-key').value.trim() } });
+        sucEl.textContent = 'Key encrypted. Address: ' + data.publicAddress;
+        sucEl.style.display = 'block';
+        document.getElementById('deposit-key').value = '';
+        loadProfile();
+      } catch (err) { errEl.textContent = err.message; errEl.style.display = 'block'; }
+    }
+
+    async function handleRemoveKey() {
+      if (!confirm('Remove your encrypted key from the vault?')) return;
+      try {
+        await api('/api/vault/key', { method: 'DELETE' });
+        loadProfile();
+      } catch (err) { alert(err.message); }
+    }
+
+    /* ── Send SOL ── */
+    async function handleSend(e) {
+      e.preventDefault();
+      const btn = document.getElementById('send-btn');
+      const result = document.getElementById('send-result');
+      btn.disabled = true; btn.textContent = 'Sending...'; result.style.display = 'none';
+      try {
+        const data = await api('/api/trade/send', { method: 'POST', body: {
+          recipient: document.getElementById('send-recipient').value.trim(),
+          amount: Number(document.getElementById('send-amount').value)
+        }});
+        result.className = 'tx-result success'; result.style.display = 'block';
+        result.textContent = 'TX: ' + data.signature;
+        refreshBalance();
+      } catch (err) {
+        result.className = 'tx-result error'; result.style.display = 'block';
+        result.textContent = err.message;
+      }
+      btn.disabled = false; btn.textContent = 'Send';
+    }
+
+    /* ── Swap ── */
+    async function handleSwap(e) {
+      e.preventDefault();
+      const btn = document.getElementById('swap-btn');
+      const result = document.getElementById('swap-result');
+      btn.disabled = true; btn.textContent = 'Executing...'; result.style.display = 'none';
+      try {
+        const data = await api('/api/trade/swap', { method: 'POST', body: {
+          tokenMint: document.getElementById('swap-mint').value.trim(),
+          amount: Number(document.getElementById('swap-amount').value),
+          side: document.getElementById('swap-side').value
+        }});
+        result.className = 'tx-result success'; result.style.display = 'block';
+        result.textContent = 'TX: ' + data.signature;
+        refreshBalance();
+      } catch (err) {
+        result.className = 'tx-result error'; result.style.display = 'block';
+        result.textContent = err.message;
+      }
+      btn.disabled = false; btn.textContent = 'Execute Swap';
+    }
+
+    /* ══════════════════════════════════════
+       Particles
+    ══════════════════════════════════════ */
     const canvas = document.getElementById('particles');
     const ctx = canvas.getContext('2d');
-    let particles = [];
-
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+    let parts = [];
+    function resizeCanvas() { canvas.width = innerWidth; canvas.height = innerHeight; }
+    resizeCanvas(); addEventListener('resize', resizeCanvas);
+    class P {
+      constructor() { this.reset(); }
+      reset() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.vx = (Math.random()-.5)*.3; this.vy = (Math.random()-.5)*.3; this.s = Math.random()*1.5+.5; this.a = Math.random()*.5+.1; }
+      update() { this.x += this.vx; this.y += this.vy; if (this.x<0||this.x>canvas.width||this.y<0||this.y>canvas.height) this.reset(); }
+      draw() { ctx.beginPath(); ctx.arc(this.x,this.y,this.s,0,Math.PI*2); ctx.fillStyle=`rgba(0,240,255,${this.a})`; ctx.fill(); }
     }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    class Particle {
-      constructor() {
-        this.reset();
+    for (let i=0;i<80;i++) parts.push(new P());
+    function animP() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      parts.forEach(p=>{p.update();p.draw();});
+      for(let i=0;i<parts.length;i++) for(let j=i+1;j<parts.length;j++){
+        const dx=parts[i].x-parts[j].x, dy=parts[i].y-parts[j].y, d=Math.sqrt(dx*dx+dy*dy);
+        if(d<120){ctx.beginPath();ctx.moveTo(parts[i].x,parts[i].y);ctx.lineTo(parts[j].x,parts[j].y);ctx.strokeStyle=`rgba(0,240,255,${.06*(1-d/120)})`;ctx.lineWidth=.5;ctx.stroke();}
       }
-      reset() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
-        this.vx = (Math.random() - 0.5) * 0.3;
-        this.vy = (Math.random() - 0.5) * 0.3;
-        this.size = Math.random() * 1.5 + 0.5;
-        this.alpha = Math.random() * 0.5 + 0.1;
-      }
-      update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
-          this.reset();
-        }
-      }
-      draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0, 240, 255, ${this.alpha})`;
-        ctx.fill();
-      }
+      requestAnimationFrame(animP);
     }
-
-    for (let i = 0; i < 80; i++) particles.push(new Particle());
-
-    function animateParticles() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles.forEach(p => { p.update(); p.draw(); });
-
-      // Draw connections
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(0, 240, 255, ${0.06 * (1 - dist / 120)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
-        }
-      }
-      requestAnimationFrame(animateParticles);
-    }
-    animateParticles();
+    animP();
 
     /* ── Scroll fade-in ── */
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
-    }, { threshold: 0.1 });
-    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+    const obs = new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); }), {threshold:.1});
+    document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
 
-    /* ── Stat counter animation ── */
-    const statObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-        const el = entry.target;
-        const target = parseInt(el.dataset.count);
-        let current = 0;
-        const step = Math.ceil(target / 60);
-        const interval = setInterval(() => {
-          current += step;
-          if (current >= target) { current = target; clearInterval(interval); }
-          el.textContent = current.toLocaleString();
-        }, 20);
-        statObserver.unobserve(el);
-      });
-    }, { threshold: 0.5 });
-    document.querySelectorAll('[data-count]').forEach(el => statObserver.observe(el));
-
-    /* ── Terminal typing animation ── */
-    const termLines = [
-      { type: 'prompt', text: '$ ' },
-      { type: 'cmd', text: 'npm run dev', delay: 60 },
-      { type: 'newline' },
-      { type: 'newline' },
-      { type: 'output', text: '  SOLbot - Solana Trading Engine', delay: 10 },
-      { type: 'newline' },
-      { type: 'newline' },
-      { type: 'cyan', text: '=== Wallet Info ===', delay: 10 },
-      { type: 'newline' },
-      { type: 'output', text: '  Address : 7xKX...mQ9p', delay: 10 },
-      { type: 'newline' },
-      { type: 'output', text: '  Network : mainnet-beta', delay: 10 },
-      { type: 'newline' },
-      { type: 'output', text: '  Balance : ', delay: 10 },
-      { type: 'green', text: '24.8012 SOL', delay: 10 },
-      { type: 'newline' },
-      { type: 'cyan', text: '===================', delay: 10 },
-      { type: 'newline' },
-      { type: 'newline' },
-      { type: 'output', text: 'Fetching Jupiter quote (buy 0.05 SOL)...', delay: 10 },
-      { type: 'newline' },
-      { type: 'green', text: 'Swap confirmed: ', delay: 10 },
-      { type: 'purple', text: '3xF9k...Tz2v', delay: 30 },
-      { type: 'newline' },
-      { type: 'newline' },
-      { type: 'prompt', text: '$ ' },
-      { type: 'cursor' },
-    ];
-
-    const termOutput = document.getElementById('terminal-output');
-    let termStarted = false;
-
-    async function typeTerminal() {
-      for (const line of termLines) {
-        if (line.type === 'newline') {
-          termOutput.appendChild(document.createElement('br'));
-          continue;
-        }
-        if (line.type === 'cursor') {
-          const cursor = document.createElement('span');
-          cursor.className = 'cursor';
-          termOutput.appendChild(cursor);
-          continue;
-        }
-        const span = document.createElement('span');
-        span.className = line.type;
-        termOutput.appendChild(span);
-        for (const char of line.text) {
-          span.textContent += char;
-          await new Promise(r => setTimeout(r, line.delay || 40));
-        }
-      }
-    }
-
-    const termObserver = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !termStarted) {
-        termStarted = true;
-        typeTerminal();
-      }
-    }, { threshold: 0.3 });
-    termObserver.observe(document.querySelector('.terminal'));
-
-    /* ── Live SOL price (CoinGecko free API) ── */
+    /* ── SOL Price ── */
     async function fetchPrice() {
       try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_vol=true');
-        const data = await res.json();
-        const price = data.solana.usd;
-        const vol = data.solana.usd_24h_vol;
-        document.getElementById('sol-price').textContent = '$' + price.toFixed(2);
-        document.getElementById('sol-volume').textContent = '$' + (vol / 1e9).toFixed(2) + 'B';
-      } catch {
-        document.getElementById('sol-price').textContent = '$---';
-        document.getElementById('sol-volume').textContent = '$---';
-      }
+        const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_vol=true');
+        const d = await r.json();
+        document.getElementById('sol-price').textContent = '$' + d.solana.usd.toFixed(2);
+        document.getElementById('sol-volume').textContent = '$' + (d.solana.usd_24h_vol/1e9).toFixed(2) + 'B';
+      } catch { document.getElementById('sol-price').textContent = '$---'; }
     }
-    fetchPrice();
-    setInterval(fetchPrice, 30000);
-  </script>
+    fetchPrice(); setInterval(fetchPrice, 30000);
 
+    /* ── Init ── */
+    if (token && user) {
+      document.getElementById('nav-user').style.display = 'flex';
+      document.getElementById('nav-email').textContent = user.email;
+    }
+  </script>
 </body>
 </html>

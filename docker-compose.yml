@@ -10,15 +10,15 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-    # Resource limits
+    volumes:
+      - solbot-data:/app/data
     deploy:
       resources:
         limits:
           memory: 256M
           cpus: "0.5"
-    # Security: read-only filesystem, drop capabilities
-    read_only: true
-    tmpfs:
-      - /tmp
     security_opt:
       - no-new-privileges:true
+
+volumes:
+  solbot-data:

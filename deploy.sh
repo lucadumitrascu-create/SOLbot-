@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ═══════════════════════════════════════════════════
-#  SOLbot Deploy Script
+#  SOLbot Custodial Deploy Script
 #  Deploys directly to any VPS — no GitHub needed
 # ═══════════════════════════════════════════════════
 
@@ -16,7 +16,7 @@ RESET="\033[0m"
 banner() {
   echo -e "${CYAN}"
   echo "  ╔═══════════════════════════════════════╗"
-  echo "  ║         SOLbot Deploy Script           ║"
+  echo "  ║     SOLbot Custodial Deploy Script     ║"
   echo "  ╚═══════════════════════════════════════╝"
   echo -e "${RESET}"
 }
@@ -43,12 +43,15 @@ esac
 
 # ── Check .env ──
 if [ ! -f .env ]; then
-  warn ".env file not found"
+  warn ".env file not found — creating one now"
   echo ""
-  read -rp "  Enter your Solana private key (base58): " PRIVATE_KEY
-  if [ -z "$PRIVATE_KEY" ]; then
-    fail "Private key is required"
-  fi
+
+  # Generate vault master key
+  VAULT_KEY=$(openssl rand -hex 32)
+  JWT_KEY=$(openssl rand -base64 48 | tr -d '=+/' | head -c 64)
+
+  info "Generated VAULT_MASTER_KEY (AES-256)"
+  info "Generated JWT_SECRET"
 
   read -rp "  RPC URL (Enter for default mainnet): " RPC_URL
   RPC_URL=${RPC_URL:-"https://api.mainnet-beta.solana.com"}
@@ -57,7 +60,8 @@ if [ ! -f .env ]; then
   MAX_SOL=${MAX_SOL:-"0.1"}
 
   cat > .env <<ENVEOF
-SOLANA_PRIVATE_KEY=${PRIVATE_KEY}
+VAULT_MASTER_KEY=${VAULT_KEY}
+JWT_SECRET=${JWT_KEY}
 SOLANA_RPC_URL=${RPC_URL}
 SOLANA_NETWORK=mainnet-beta
 SLIPPAGE_BPS=50
@@ -66,6 +70,10 @@ ENVEOF
 
   chmod 600 .env
   ok ".env created (permissions: 600 — owner only)"
+  echo ""
+  info "Users will deposit their private keys via the dashboard."
+  info "Keys are encrypted with AES-256-GCM using the vault master key."
+  echo ""
 fi
 
 # ── Local deploy ──
@@ -80,10 +88,10 @@ if [ "$DEPLOY_MODE" = "local" ]; then
   docker compose up --build -d
 
   echo ""
-  ok "SOLbot is running!"
+  ok "SOLbot Custodial is running!"
   echo ""
   info "Dashboard : http://localhost:3000"
-  info "API       : http://localhost:3000/api/wallet"
+  info "API       : http://localhost:3000/api/health"
   info "Logs      : docker compose logs -f"
   info "Stop      : docker compose down"
   echo ""
@@ -128,7 +136,7 @@ if [ "$DEPLOY_MODE" = "remote" ]; then
   $SSH_CMD "cd ${REMOTE_DIR} && docker compose down 2>/dev/null; docker compose up --build -d"
 
   echo ""
-  ok "SOLbot deployed to ${VPS_HOST}!"
+  ok "SOLbot Custodial deployed to ${VPS_HOST}!"
   echo ""
   info "Dashboard : http://${VPS_HOST}:3000"
   info "SSH logs  : ${SSH_CMD} 'cd ${REMOTE_DIR} && docker compose logs -f'"

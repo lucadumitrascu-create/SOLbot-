@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import path from "path";
+import crypto from "crypto";
 
 // Load .env from project root
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
@@ -16,8 +17,11 @@ function requireEnv(name: string): string {
 }
 
 export const config = {
-  /** Base58-encoded private key — loaded from .env, never hardcoded */
-  privateKey: requireEnv("SOLANA_PRIVATE_KEY"),
+  /** Master key for encrypting user private keys at rest (AES-256-GCM) */
+  vaultMasterKey: requireEnv("VAULT_MASTER_KEY"),
+
+  /** JWT signing secret */
+  jwtSecret: process.env.JWT_SECRET || crypto.randomBytes(48).toString("base64url"),
 
   /** Solana RPC endpoint */
   rpcUrl: process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com",
