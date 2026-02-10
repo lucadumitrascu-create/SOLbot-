@@ -93,6 +93,22 @@ export function getUser(userId: string): User | null {
   return users[userId] || null;
 }
 
+export function ensureLocalUser(supabaseUserId: string, email: string): User {
+  const users = loadAll();
+  if (users[supabaseUserId]) return users[supabaseUserId];
+  const user: User = {
+    id: supabaseUserId,
+    email,
+    passwordHash: "",
+    privateKey: null,
+    publicAddress: null,
+    createdAt: new Date().toISOString(),
+  };
+  users[user.id] = user;
+  saveAll(users);
+  return user;
+}
+
 export function removePrivateKey(userId: string): void {
   const users = loadAll();
   const user = users[userId];
