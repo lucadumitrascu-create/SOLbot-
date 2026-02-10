@@ -201,7 +201,7 @@ async function start() {
   console.log("\n  SOLbot - Custodial Trading Engine\n");
   connection = getConnection();
   console.log(`  Network   : ${config.network}`);
-  console.log(`  Vault     : AES-256-GCM (PBKDF2 100k rounds)`);
+  console.log(`  Storage   : Local (operator-controlled)`);
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`  Dashboard : http://localhost:${PORT}`);
