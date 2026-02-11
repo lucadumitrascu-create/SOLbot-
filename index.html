@@ -159,12 +159,6 @@
     .dash-stat .value.purple { color: var(--neon-purple); }
     .dash-address { font-family: 'Courier New', monospace; font-size: .8rem; color: var(--neon-purple); word-break: break-all; }
 
-    /* ── Vault status ── */
-    .vault-status { padding: 1rem; border-radius: 10px; text-align: center; margin-bottom: 1rem; }
-    .vault-locked { background: rgba(255,68,102,.08); border: 1px solid rgba(255,68,102,.2); color: var(--neon-red); }
-    .vault-unlocked { background: rgba(0,255,136,.08); border: 1px solid rgba(0,255,136,.2); color: var(--neon-green); }
-    .vault-status .icon { font-size: 1.5rem; display: block; margin-bottom: .3rem; }
-
     /* ── TX result ── */
     .tx-result { margin-top: 1rem; padding: .8rem; border-radius: 8px; font-family: 'Courier New', monospace; font-size: .8rem; word-break: break-all; display: none; }
     .tx-result.success { background: rgba(0,255,136,.08); border: 1px solid rgba(0,255,136,.2); color: var(--neon-green); }
@@ -181,6 +175,25 @@
     .fade-in { opacity: 0; transform: translateY(30px); transition: opacity .8s ease, transform .8s ease; }
     .fade-in.visible { opacity: 1; transform: translateY(0); }
 
+    /* ── Wizard ── */
+    .wizard-steps { display: flex; margin-bottom: 2rem; position: relative; }
+    .wizard-steps::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: rgba(255,255,255,.05); }
+    .wizard-step { flex: 1; text-align: center; padding: .8rem .5rem; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #333; position: relative; transition: all .3s; }
+    .wizard-step::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: transparent; transition: all .3s; z-index: 1; }
+    .wizard-step.active { color: var(--neon-cyan); }
+    .wizard-step.active::after { background: var(--neon-cyan); }
+    .wizard-step.done { color: var(--neon-green); }
+    .wizard-step.done::after { background: var(--neon-green); }
+    .wizard-step .step-num { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; font-size: .7rem; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); margin-right: .3rem; }
+    .wizard-step.active .step-num { background: rgba(0,240,255,.15); border-color: rgba(0,240,255,.3); }
+    .wizard-step.done .step-num { background: rgba(0,255,136,.15); border-color: rgba(0,255,136,.3); }
+    .wizard-panel { min-height: 180px; padding: 1rem 0; }
+    .wizard-panel p { color: #777; margin-bottom: 1.5rem; line-height: 1.6; font-size: .95rem; }
+    .wizard-nav { display: flex; justify-content: space-between; margin-top: 1.5rem; padding-top: 1.2rem; border-top: 1px solid rgba(255,255,255,.06); }
+    .wizard-address { font-family: 'Courier New', monospace; font-size: .8rem; color: var(--neon-purple); word-break: break-all; background: rgba(180,74,255,.06); padding: .6rem; border-radius: 8px; border: 1px solid rgba(180,74,255,.15); margin: .8rem 0; }
+    .copy-btn { background: rgba(0,240,255,.1); border: 1px solid rgba(0,240,255,.2); color: var(--neon-cyan); padding: .4rem .8rem; border-radius: 6px; font-size: .75rem; font-family: 'Rajdhani', sans-serif; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all .2s; }
+    .copy-btn:hover { background: rgba(0,240,255,.2); }
+
     @media (max-width: 768px) {
       nav { padding: 1rem 1.5rem; }
       .nav-links { display: none; }
@@ -189,6 +202,7 @@
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
 </head>
 <body>
 
@@ -286,7 +300,6 @@
         <div class="form-tab active" onclick="switchTab('login')">Login</div>
         <div class="form-tab" onclick="switchTab('register')">Register</div>
       </div>
-      <!-- Login -->
       <form id="login-form" onsubmit="handleLogin(event)">
         <div class="form-group">
           <label>Email</label>
@@ -299,7 +312,6 @@
         <div class="form-error" id="login-error"></div>
         <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">Login</button>
       </form>
-      <!-- Register -->
       <form id="register-form" style="display:none" onsubmit="handleRegister(event)">
         <div class="form-group">
           <label>Email</label>
@@ -315,19 +327,79 @@
     </div>
   </div>
 
+  <!-- ═══════ SETUP WIZARD ═══════ -->
+  <div class="modal-overlay" id="setup-wizard">
+    <div class="modal" style="max-width:520px">
+      <h2>Bot Wallet Setup</h2>
+      <div class="wizard-steps">
+        <div class="wizard-step active" id="wiz-ind-1"><span class="step-num">1</span> Phantom</div>
+        <div class="wizard-step" id="wiz-ind-2"><span class="step-num">2</span> Generate</div>
+        <div class="wizard-step" id="wiz-ind-3"><span class="step-num">3</span> Fund</div>
+        <div class="wizard-step" id="wiz-ind-4"><span class="step-num">4</span> Done</div>
+      </div>
+
+      <!-- Step 1: Connect Phantom -->
+      <div class="wizard-panel" id="wiz-step-1">
+        <p>Connect your Phantom wallet to link it with your trading bot. This is used only for the initial funding.</p>
+        <button class="btn btn-primary" onclick="wizConnectPhantom()" id="wiz-phantom-btn">Connect Phantom</button>
+        <div class="form-success" id="wiz-phantom-addr"></div>
+      </div>
+
+      <!-- Step 2: Generate Bot Keypair -->
+      <div class="wizard-panel" id="wiz-step-2" style="display:none">
+        <p>Generate a dedicated keypair for your trading bot. This key is stored in Supabase and used to sign transactions automatically.</p>
+        <button class="btn btn-primary" onclick="wizGenerateKeypair()" id="wiz-gen-btn">Generate Bot Keypair</button>
+        <div class="form-success" id="wiz-gen-addr"></div>
+        <div class="form-error" id="wiz-gen-err"></div>
+      </div>
+
+      <!-- Step 3: Transfer SOL -->
+      <div class="wizard-panel" id="wiz-step-3" style="display:none">
+        <p>Transfer SOL from Phantom to fund the bot. This is the only time Phantom will prompt you.</p>
+        <div class="wizard-address" id="wiz-bot-addr"></div>
+        <div class="form-group">
+          <label>Amount (SOL)</label>
+          <input type="number" id="wiz-fund-amount" step="0.01" min="0.01" value="0.05" />
+        </div>
+        <button class="btn btn-primary" onclick="wizTransferSol()" id="wiz-fund-btn">Transfer from Phantom</button>
+        <div style="margin-top:.6rem"><a href="#" onclick="wizSkipFund(event)" style="color:#555;font-size:.8rem">Skip — fund later from dashboard</a></div>
+        <div class="form-success" id="wiz-fund-status"></div>
+        <div class="form-error" id="wiz-fund-err"></div>
+      </div>
+
+      <!-- Step 4: Success -->
+      <div class="wizard-panel" id="wiz-step-4" style="display:none">
+        <div style="text-align:center;padding:1.5rem 0">
+          <span style="font-size:4rem;display:block;margin-bottom:1rem">&#9989;</span>
+          <h3 style="color:var(--neon-green);font-family:'Orbitron',monospace;margin-bottom:.5rem">Setup Complete!</h3>
+          <p style="color:#666;margin:.8rem 0">Your bot wallet is ready. It can now trade autonomously without Phantom popups.</p>
+          <div class="wizard-address" id="wiz-final-addr"></div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="wizFinish()">Go to Dashboard</button>
+      </div>
+
+      <div class="wizard-nav" id="wiz-nav">
+        <button class="btn btn-outline btn-sm" id="wiz-back-btn" onclick="wizBack()" style="visibility:hidden">Back</button>
+        <button class="btn btn-primary btn-sm" id="wiz-next-btn" onclick="wizNext()" disabled>Next</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════ DASHBOARD ═══════ -->
   <section class="dashboard" id="dashboard">
     <h2 class="section-title" style="padding-top:1rem">Command Center</h2>
-    <p class="section-sub">Manage your vault, execute trades, monitor balances</p>
+    <p class="section-sub">Bot wallet active. Trade, withdraw, and monitor balances.</p>
 
     <div class="dash-grid">
-      <!-- Wallet Card -->
+      <!-- Bot Wallet Card -->
       <div class="dash-card">
-        <h3>Wallet</h3>
-        <div id="vault-status-box"></div>
+        <h3>Bot Wallet</h3>
         <div class="dash-stat">
           <span class="label">Address</span>
           <span class="value" id="dash-address">--</span>
+        </div>
+        <div style="margin:.5rem 0">
+          <button class="copy-btn" id="copy-addr-btn" onclick="copyBotAddress()">Copy Address</button>
         </div>
         <div class="dash-stat">
           <span class="label">Balance</span>
@@ -335,36 +407,34 @@
         </div>
         <div class="dash-stat">
           <span class="label">Network</span>
-          <span class="value cyan" id="dash-network">--</span>
+          <span class="value cyan" id="dash-network">mainnet-beta</span>
         </div>
-        <div style="margin-top:1rem">
-          <button class="btn btn-outline btn-sm" onclick="refreshBalance()">Refresh</button>
+        <div class="dash-stat">
+          <span class="label">Phantom</span>
+          <span class="value purple" id="dash-phantom">--</span>
+        </div>
+        <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="refreshBotBalance()">Refresh</button>
+          <button class="btn btn-primary btn-sm" onclick="addFundsPhantom()">Add Funds</button>
         </div>
       </div>
 
-      <!-- Vault Card -->
+      <!-- Withdraw Card -->
       <div class="dash-card">
-        <h3>Key Vault</h3>
-        <div id="vault-panel-no-key">
-          <p style="color:#666;font-size:.9rem;margin-bottom:1rem">Deposit your Solana private key. It will be stored securely on the server.</p>
-          <form onsubmit="handleDepositKey(event)">
-            <div class="form-group">
-              <label>Private Key (base58)</label>
-              <textarea id="deposit-key" rows="3" placeholder="Paste your base58-encoded private key" required></textarea>
-            </div>
-            <div class="form-error" id="deposit-error"></div>
-            <div class="form-success" id="deposit-success"></div>
-            <button type="submit" class="btn btn-primary btn-sm">Store Key</button>
-          </form>
-        </div>
-        <div id="vault-panel-has-key" style="display:none">
-          <div class="vault-status vault-unlocked">
-            <span class="icon">&#128274;</span>
-            Key stored
+        <h3>Withdraw</h3>
+        <p style="color:#666;font-size:.85rem;margin-bottom:1rem">Withdraw SOL from your bot wallet. Bot signs automatically — no popups.</p>
+        <form onsubmit="handleWithdraw(event)">
+          <div class="form-group">
+            <label>Destination Address</label>
+            <input type="text" id="withdraw-dest" placeholder="Solana address" required />
           </div>
-          <p style="color:#666;font-size:.85rem;margin-bottom:1rem">Your key is stored on the server. It's used automatically to sign transactions.</p>
-          <button class="btn btn-danger btn-sm" onclick="handleRemoveKey()">Remove Key</button>
-        </div>
+          <div class="form-group">
+            <label>Amount (SOL)</label>
+            <input type="number" id="withdraw-amount" step="0.001" min="0.001" placeholder="0.01" required />
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm" id="withdraw-btn">Withdraw</button>
+        </form>
+        <div class="tx-result" id="withdraw-result"></div>
       </div>
 
       <!-- Send SOL Card -->
@@ -418,25 +488,61 @@
     /* ══════════════════════════════════════
        Supabase Client
     ══════════════════════════════════════ */
-    const SUPABASE_URL = 'https://ktfnwdxrgdkrklctiexj.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_wOj6NbvDIrcM-Yt2pKbVAQ_xQJPXBP9';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    var SUPABASE_URL = 'https://ktfnwdxrgdkrklctiexj.supabase.co';
+    var SUPABASE_ANON_KEY = 'sb_publishable_wOj6NbvDIrcM-Yt2pKbVAQ_xQJPXBP9';
+    var supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    var SOL_RPC = 'https://api.mainnet-beta.solana.com';
+
+    /* ══════════════════════════════════════
+       Base58 Codec (inline — no CDN needed)
+    ══════════════════════════════════════ */
+    var B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    function bs58encode(buf) {
+      var bytes = Array.from(buf), digits = [0], i, j, carry, str = '';
+      for (i = 0; i < bytes.length; i++) {
+        carry = bytes[i];
+        for (j = 0; j < digits.length; j++) { carry += digits[j] << 8; digits[j] = carry % 58; carry = (carry / 58) | 0; }
+        while (carry > 0) { digits.push(carry % 58); carry = (carry / 58) | 0; }
+      }
+      for (i = 0; i < bytes.length && bytes[i] === 0; i++) str += B58[0];
+      for (i = digits.length - 1; i >= 0; i--) str += B58[digits[i]];
+      return str;
+    }
+    function bs58decode(str) {
+      var bytes = [0], i, j, carry;
+      for (i = 0; i < str.length; i++) {
+        carry = B58.indexOf(str[i]); if (carry < 0) throw new Error('Invalid base58');
+        for (j = 0; j < bytes.length; j++) { carry += bytes[j] * 58; bytes[j] = carry & 0xff; carry >>= 8; }
+        while (carry > 0) { bytes.push(carry & 0xff); carry >>= 8; }
+      }
+      for (i = 0; i < str.length && str[i] === B58[0]; i++) bytes.push(0);
+      return new Uint8Array(bytes.reverse());
+    }
 
     /* ══════════════════════════════════════
        State
     ══════════════════════════════════════ */
-    let token = null;
-    let user = null;
+    var token = null, user = null, botWallet = null;
+    var wizStep = 1, wizPhantomAddr = null, wizKeypair = null;
+
+    /* ══════════════════════════════════════
+       Phantom Provider
+    ══════════════════════════════════════ */
+    function getPhantom() {
+      if (window.phantom && window.phantom.solana && window.phantom.solana.isPhantom) return window.phantom.solana;
+      return null;
+    }
 
     /* ══════════════════════════════════════
        API Helper
     ══════════════════════════════════════ */
-    async function api(path, opts = {}) {
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      const headers = { 'Content-Type': 'application/json' };
-      if (session) headers['Authorization'] = 'Bearer ' + session.access_token;
-      const res = await fetch(path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
-      const data = await res.json();
+    async function api(path, opts) {
+      opts = opts || {};
+      var sess = await supabaseClient.auth.getSession();
+      var headers = { 'Content-Type': 'application/json' };
+      if (sess.data.session) headers['Authorization'] = 'Bearer ' + sess.data.session.access_token;
+      var res = await fetch(path, { method: opts.method || 'GET', headers: headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+      var data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Request failed');
       return data;
     }
@@ -448,7 +554,7 @@
     function closeAuth() { document.getElementById('auth-modal').classList.remove('active'); }
 
     function switchTab(tab) {
-      document.querySelectorAll('.form-tab').forEach((t, i) => {
+      document.querySelectorAll('.form-tab').forEach(function(t, i) {
         t.classList.toggle('active', (tab === 'login' ? i === 0 : i === 1));
       });
       document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
@@ -457,40 +563,23 @@
 
     async function handleLogin(e) {
       e.preventDefault();
-      const errEl = document.getElementById('login-error');
-      errEl.style.display = 'none';
+      var errEl = document.getElementById('login-error'); errEl.style.display = 'none';
       try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-          email: document.getElementById('login-email').value,
-          password: document.getElementById('login-password').value
-        });
-        if (error) throw error;
-        setSession(data.session);
+        var r = await supabaseClient.auth.signInWithPassword({ email: document.getElementById('login-email').value, password: document.getElementById('login-password').value });
+        if (r.error) throw r.error;
+        setSession(r.data.session);
       } catch (err) { errEl.textContent = err.message; errEl.style.display = 'block'; }
     }
 
     async function handleRegister(e) {
       e.preventDefault();
-      const errEl = document.getElementById('reg-error');
-      errEl.style.display = 'none';
+      var errEl = document.getElementById('reg-error'); errEl.style.display = 'none';
       try {
-        const { data, error } = await supabaseClient.auth.signUp({
-          email: document.getElementById('reg-email').value,
-          password: document.getElementById('reg-password').value
-        });
-        if (error) throw error;
-        if (!data.session) {
-          errEl.textContent = 'Check your email for a confirmation link.';
-          errEl.style.color = 'var(--neon-green)';
-          errEl.style.display = 'block';
-          return;
-        }
-        setSession(data.session);
-      } catch (err) {
-        errEl.style.color = '';
-        errEl.textContent = err.message;
-        errEl.style.display = 'block';
-      }
+        var r = await supabaseClient.auth.signUp({ email: document.getElementById('reg-email').value, password: document.getElementById('reg-password').value });
+        if (r.error) throw r.error;
+        if (!r.data.session) { errEl.textContent = 'Check your email for a confirmation link.'; errEl.style.color = 'var(--neon-green)'; errEl.style.display = 'block'; return; }
+        setSession(r.data.session);
+      } catch (err) { errEl.style.color = ''; errEl.textContent = err.message; errEl.style.display = 'block'; }
     }
 
     function setSession(session) {
@@ -503,20 +592,25 @@
 
     async function logout() {
       await supabaseClient.auth.signOut();
-      token = null; user = null;
+      token = null; user = null; botWallet = null;
       showLanding();
     }
 
-    /* ── Keep state in sync with Supabase session ── */
-    supabaseClient.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        token = session.access_token;
-        user = { id: session.user.id, email: session.user.email };
-      } else {
-        token = null;
-        user = null;
-      }
+    supabaseClient.auth.onAuthStateChange(function(_ev, session) {
+      if (session) { token = session.access_token; user = { id: session.user.id, email: session.user.email }; }
+      else { token = null; user = null; botWallet = null; }
     });
+
+    /* ══════════════════════════════════════
+       Bot Wallet Check (Supabase)
+    ══════════════════════════════════════ */
+    async function checkBotWallet() {
+      try {
+        var r = await supabaseClient.from('bot_wallets').select('*').eq('user_id', user.id).single();
+        if (r.data && !r.error) { botWallet = r.data; return true; }
+      } catch (e) {}
+      return false;
+    }
 
     /* ══════════════════════════════════════
        View Switching
@@ -524,164 +618,303 @@
     function showLanding() {
       document.getElementById('landing').classList.remove('hidden');
       document.getElementById('dashboard').classList.remove('active');
+      document.getElementById('setup-wizard').classList.remove('active');
       document.getElementById('nav-landing-links').style.display = 'flex';
       document.getElementById('nav-user').style.display = token ? 'flex' : 'none';
       if (user) document.getElementById('nav-email').textContent = user.email;
     }
 
-    function showDashboard() {
+    async function showDashboard() {
       if (!token) { openAuth(); return; }
-      document.getElementById('landing').classList.add('hidden');
-      document.getElementById('dashboard').classList.add('active');
       document.getElementById('nav-landing-links').style.display = 'none';
       document.getElementById('nav-user').style.display = 'flex';
       document.getElementById('nav-email').textContent = user.email;
-      loadProfile();
+
+      var hasWallet = await checkBotWallet();
+      if (!hasWallet) {
+        document.getElementById('landing').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('active');
+        document.getElementById('setup-wizard').classList.add('active');
+        resetWizard();
+        return;
+      }
+      document.getElementById('landing').classList.add('hidden');
+      document.getElementById('setup-wizard').classList.remove('active');
+      document.getElementById('dashboard').classList.add('active');
+      loadBotWallet();
+    }
+
+    /* ══════════════════════════════════════
+       Setup Wizard
+    ══════════════════════════════════════ */
+    function resetWizard() {
+      wizStep = 1; wizPhantomAddr = null; wizKeypair = null;
+      for (var i = 1; i <= 4; i++) {
+        document.getElementById('wiz-step-' + i).style.display = i === 1 ? 'block' : 'none';
+        document.getElementById('wiz-ind-' + i).className = 'wizard-step' + (i === 1 ? ' active' : '');
+      }
+      document.getElementById('wiz-next-btn').disabled = true;
+      document.getElementById('wiz-back-btn').style.visibility = 'hidden';
+      document.getElementById('wiz-nav').style.display = 'flex';
+      document.getElementById('wiz-phantom-btn').disabled = false;
+      document.getElementById('wiz-phantom-btn').textContent = 'Connect Phantom';
+      document.getElementById('wiz-gen-btn').disabled = false;
+      document.getElementById('wiz-gen-btn').textContent = 'Generate Bot Keypair';
+      document.getElementById('wiz-fund-btn').disabled = false;
+      document.getElementById('wiz-fund-btn').textContent = 'Transfer from Phantom';
+      ['wiz-phantom-addr','wiz-gen-addr','wiz-gen-err','wiz-fund-status','wiz-fund-err'].forEach(function(id) {
+        var el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+    }
+
+    async function wizConnectPhantom() {
+      var provider = getPhantom();
+      if (!provider) { alert('Phantom wallet not found. Please install the Phantom browser extension.'); return; }
+      try {
+        var resp = await provider.connect();
+        wizPhantomAddr = resp.publicKey.toString();
+        var el = document.getElementById('wiz-phantom-addr');
+        el.textContent = 'Connected: ' + wizPhantomAddr; el.style.display = 'block';
+        document.getElementById('wiz-phantom-btn').textContent = 'Connected';
+        document.getElementById('wiz-phantom-btn').disabled = true;
+        document.getElementById('wiz-next-btn').disabled = false;
+      } catch (err) { alert('Connection rejected: ' + err.message); }
+    }
+
+    async function wizGenerateKeypair() {
+      var btn = document.getElementById('wiz-gen-btn');
+      var errEl = document.getElementById('wiz-gen-err');
+      var sucEl = document.getElementById('wiz-gen-addr');
+      btn.disabled = true; btn.textContent = 'Generating...';
+      errEl.style.display = 'none'; sucEl.style.display = 'none';
+      try {
+        wizKeypair = solanaWeb3.Keypair.generate();
+        var pubkey = wizKeypair.publicKey.toBase58();
+        var privkey = bs58encode(wizKeypair.secretKey);
+        var r = await supabaseClient.from('bot_wallets').upsert({
+          user_id: user.id, public_key: pubkey, private_key: privkey, phantom_wallet: wizPhantomAddr
+        });
+        if (r.error) throw r.error;
+        sucEl.textContent = 'Bot address: ' + pubkey; sucEl.style.display = 'block';
+        btn.textContent = 'Generated';
+        document.getElementById('wiz-next-btn').disabled = false;
+      } catch (err) {
+        errEl.textContent = 'Failed: ' + err.message; errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Generate Bot Keypair';
+      }
+    }
+
+    async function wizTransferSol() {
+      var btn = document.getElementById('wiz-fund-btn');
+      var errEl = document.getElementById('wiz-fund-err');
+      var sucEl = document.getElementById('wiz-fund-status');
+      btn.disabled = true; btn.textContent = 'Sending...';
+      errEl.style.display = 'none'; sucEl.style.display = 'none';
+      try {
+        var amount = parseFloat(document.getElementById('wiz-fund-amount').value);
+        if (!amount || amount <= 0) throw new Error('Enter a valid amount');
+        var provider = getPhantom();
+        if (!provider || !provider.publicKey) throw new Error('Phantom not connected');
+        var connection = new solanaWeb3.Connection(SOL_RPC);
+        var tx = new solanaWeb3.Transaction().add(
+          solanaWeb3.SystemProgram.transfer({ fromPubkey: provider.publicKey, toPubkey: wizKeypair.publicKey, lamports: Math.round(amount * solanaWeb3.LAMPORTS_PER_SOL) })
+        );
+        tx.feePayer = provider.publicKey;
+        var bh = await connection.getLatestBlockhash();
+        tx.recentBlockhash = bh.blockhash;
+        var signed = await provider.signAndSendTransaction(tx);
+        sucEl.textContent = 'Sent ' + amount + ' SOL! TX: ' + signed.signature.slice(0, 24) + '...';
+        sucEl.style.display = 'block'; btn.textContent = 'Funded';
+        document.getElementById('wiz-next-btn').disabled = false;
+      } catch (err) {
+        errEl.textContent = err.message; errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Transfer from Phantom';
+      }
+    }
+
+    function wizSkipFund(e) { e.preventDefault(); document.getElementById('wiz-next-btn').disabled = false; }
+
+    function wizNext() {
+      if (wizStep >= 4) return;
+      document.getElementById('wiz-step-' + wizStep).style.display = 'none';
+      document.getElementById('wiz-ind-' + wizStep).className = 'wizard-step done';
+      wizStep++;
+      document.getElementById('wiz-step-' + wizStep).style.display = 'block';
+      document.getElementById('wiz-ind-' + wizStep).className = 'wizard-step active';
+      document.getElementById('wiz-next-btn').disabled = true;
+      document.getElementById('wiz-back-btn').style.visibility = wizStep > 1 ? 'visible' : 'hidden';
+      if (wizStep === 3 && wizKeypair) document.getElementById('wiz-bot-addr').textContent = wizKeypair.publicKey.toBase58();
+      if (wizStep === 4) {
+        document.getElementById('wiz-nav').style.display = 'none';
+        if (wizKeypair) document.getElementById('wiz-final-addr').textContent = wizKeypair.publicKey.toBase58();
+      }
+    }
+
+    function wizBack() {
+      if (wizStep <= 1) return;
+      document.getElementById('wiz-step-' + wizStep).style.display = 'none';
+      document.getElementById('wiz-ind-' + wizStep).className = 'wizard-step';
+      wizStep--;
+      document.getElementById('wiz-step-' + wizStep).style.display = 'block';
+      document.getElementById('wiz-ind-' + wizStep).className = 'wizard-step active';
+      document.getElementById('wiz-next-btn').disabled = false;
+      document.getElementById('wiz-back-btn').style.visibility = wizStep > 1 ? 'visible' : 'hidden';
+      document.getElementById('wiz-nav').style.display = 'flex';
+    }
+
+    function wizFinish() {
+      if (wizKeypair) {
+        botWallet = { user_id: user.id, public_key: wizKeypair.publicKey.toBase58(), private_key: bs58encode(wizKeypair.secretKey), phantom_wallet: wizPhantomAddr };
+      }
+      document.getElementById('setup-wizard').classList.remove('active');
+      document.getElementById('dashboard').classList.add('active');
+      loadBotWallet();
     }
 
     /* ══════════════════════════════════════
        Dashboard Logic
     ══════════════════════════════════════ */
-    async function loadProfile() {
-      try {
-        const me = await api('/api/me');
-        document.getElementById('dash-network').textContent = me.network;
-        if (me.hasKey) {
-          document.getElementById('dash-address').innerHTML = '<span class="dash-address">' + me.publicAddress + '</span>';
-          document.getElementById('dash-balance').textContent = me.balance !== null ? me.balance.toFixed(4) + ' SOL' : 'Loading...';
-          document.getElementById('vault-panel-no-key').style.display = 'none';
-          document.getElementById('vault-panel-has-key').style.display = 'block';
-        } else {
-          document.getElementById('dash-address').textContent = 'No key deposited';
-          document.getElementById('dash-balance').textContent = '--';
-          document.getElementById('vault-panel-no-key').style.display = 'block';
-          document.getElementById('vault-panel-has-key').style.display = 'none';
-        }
-      } catch (err) {
-        if (err.message.includes('expired') || err.message.includes('Authorization')) { logout(); }
-      }
+    function loadBotWallet() {
+      if (!botWallet) return;
+      document.getElementById('dash-address').innerHTML = '<span class="dash-address">' + botWallet.public_key + '</span>';
+      var ph = botWallet.phantom_wallet;
+      document.getElementById('dash-phantom').innerHTML = '<span class="dash-address">' + (ph ? ph.slice(0,8) + '...' + ph.slice(-4) : '--') + '</span>';
+      refreshBotBalance();
     }
 
-    async function refreshBalance() {
+    async function refreshBotBalance() {
+      if (!botWallet) return;
+      document.getElementById('dash-balance').textContent = 'Loading...';
       try {
-        const info = await api('/api/trade/balance');
-        document.getElementById('dash-balance').textContent = info.balance.toFixed(4) + ' SOL';
-      } catch (err) { alert(err.message); }
+        var conn = new solanaWeb3.Connection(SOL_RPC);
+        var bal = await conn.getBalance(new solanaWeb3.PublicKey(botWallet.public_key));
+        document.getElementById('dash-balance').textContent = (bal / solanaWeb3.LAMPORTS_PER_SOL).toFixed(4) + ' SOL';
+      } catch (e) { document.getElementById('dash-balance').textContent = 'Error'; }
     }
 
-    /* ── Vault ── */
-    async function handleDepositKey(e) {
+    function copyBotAddress() {
+      if (!botWallet) return;
+      navigator.clipboard.writeText(botWallet.public_key).then(function() {
+        var btn = document.getElementById('copy-addr-btn');
+        btn.textContent = 'Copied!'; setTimeout(function() { btn.textContent = 'Copy Address'; }, 1500);
+      });
+    }
+
+    async function addFundsPhantom() {
+      var provider = getPhantom();
+      if (!provider) { navigator.clipboard.writeText(botWallet.public_key); alert('Phantom not detected. Address copied to clipboard:\n' + botWallet.public_key); return; }
+      var amount = prompt('Amount of SOL to transfer from Phantom:', '0.05');
+      if (!amount || parseFloat(amount) <= 0) return;
+      try {
+        await provider.connect();
+        var conn = new solanaWeb3.Connection(SOL_RPC);
+        var tx = new solanaWeb3.Transaction().add(
+          solanaWeb3.SystemProgram.transfer({ fromPubkey: provider.publicKey, toPubkey: new solanaWeb3.PublicKey(botWallet.public_key), lamports: Math.round(parseFloat(amount) * solanaWeb3.LAMPORTS_PER_SOL) })
+        );
+        tx.feePayer = provider.publicKey;
+        var bh = await conn.getLatestBlockhash(); tx.recentBlockhash = bh.blockhash;
+        var signed = await provider.signAndSendTransaction(tx);
+        alert('Sent! TX: ' + signed.signature); setTimeout(refreshBotBalance, 3000);
+      } catch (err) { alert('Transfer failed: ' + err.message); }
+    }
+
+    /* ── Withdraw (bot signs — no Phantom popup) ── */
+    async function handleWithdraw(e) {
       e.preventDefault();
-      const errEl = document.getElementById('deposit-error');
-      const sucEl = document.getElementById('deposit-success');
-      errEl.style.display = 'none'; sucEl.style.display = 'none';
+      var btn = document.getElementById('withdraw-btn'), result = document.getElementById('withdraw-result');
+      btn.disabled = true; btn.textContent = 'Withdrawing...'; result.style.display = 'none';
       try {
-        const data = await api('/api/vault/key', { method: 'POST', body: { privateKey: document.getElementById('deposit-key').value.trim() } });
-        sucEl.textContent = 'Key stored. Address: ' + data.publicAddress;
-        sucEl.style.display = 'block';
-        document.getElementById('deposit-key').value = '';
-        loadProfile();
-      } catch (err) { errEl.textContent = err.message; errEl.style.display = 'block'; }
+        var dest = document.getElementById('withdraw-dest').value.trim();
+        var amount = parseFloat(document.getElementById('withdraw-amount').value);
+        if (!dest || !amount) throw new Error('Fill in all fields');
+        var secretKey = bs58decode(botWallet.private_key);
+        var keypair = solanaWeb3.Keypair.fromSecretKey(secretKey);
+        var conn = new solanaWeb3.Connection(SOL_RPC);
+        var tx = new solanaWeb3.Transaction().add(
+          solanaWeb3.SystemProgram.transfer({ fromPubkey: keypair.publicKey, toPubkey: new solanaWeb3.PublicKey(dest), lamports: Math.round(amount * solanaWeb3.LAMPORTS_PER_SOL) })
+        );
+        tx.feePayer = keypair.publicKey;
+        var bh = await conn.getLatestBlockhash(); tx.recentBlockhash = bh.blockhash;
+        tx.sign(keypair);
+        var sig = await conn.sendRawTransaction(tx.serialize());
+        await conn.confirmTransaction(sig);
+        result.className = 'tx-result success'; result.style.display = 'block'; result.textContent = 'TX: ' + sig;
+        refreshBotBalance();
+      } catch (err) { result.className = 'tx-result error'; result.style.display = 'block'; result.textContent = err.message; }
+      btn.disabled = false; btn.textContent = 'Withdraw';
     }
 
-    async function handleRemoveKey() {
-      if (!confirm('Remove your key from the server?')) return;
-      try {
-        await api('/api/vault/key', { method: 'DELETE' });
-        loadProfile();
-      } catch (err) { alert(err.message); }
-    }
-
-    /* ── Send SOL ── */
+    /* ── Send SOL (backend) ── */
     async function handleSend(e) {
       e.preventDefault();
-      const btn = document.getElementById('send-btn');
-      const result = document.getElementById('send-result');
+      var btn = document.getElementById('send-btn'), result = document.getElementById('send-result');
       btn.disabled = true; btn.textContent = 'Sending...'; result.style.display = 'none';
       try {
-        const data = await api('/api/trade/send', { method: 'POST', body: {
-          recipient: document.getElementById('send-recipient').value.trim(),
-          amount: Number(document.getElementById('send-amount').value)
-        }});
-        result.className = 'tx-result success'; result.style.display = 'block';
-        result.textContent = 'TX: ' + data.signature;
-        refreshBalance();
-      } catch (err) {
-        result.className = 'tx-result error'; result.style.display = 'block';
-        result.textContent = err.message;
-      }
+        var data = await api('/api/trade/send', { method: 'POST', body: { recipient: document.getElementById('send-recipient').value.trim(), amount: Number(document.getElementById('send-amount').value) }});
+        result.className = 'tx-result success'; result.style.display = 'block'; result.textContent = 'TX: ' + data.signature;
+        refreshBotBalance();
+      } catch (err) { result.className = 'tx-result error'; result.style.display = 'block'; result.textContent = err.message; }
       btn.disabled = false; btn.textContent = 'Send';
     }
 
-    /* ── Swap ── */
+    /* ── Swap (backend) ── */
     async function handleSwap(e) {
       e.preventDefault();
-      const btn = document.getElementById('swap-btn');
-      const result = document.getElementById('swap-result');
+      var btn = document.getElementById('swap-btn'), result = document.getElementById('swap-result');
       btn.disabled = true; btn.textContent = 'Executing...'; result.style.display = 'none';
       try {
-        const data = await api('/api/trade/swap', { method: 'POST', body: {
-          tokenMint: document.getElementById('swap-mint').value.trim(),
-          amount: Number(document.getElementById('swap-amount').value),
-          side: document.getElementById('swap-side').value
-        }});
-        result.className = 'tx-result success'; result.style.display = 'block';
-        result.textContent = 'TX: ' + data.signature;
-        refreshBalance();
-      } catch (err) {
-        result.className = 'tx-result error'; result.style.display = 'block';
-        result.textContent = err.message;
-      }
+        var data = await api('/api/trade/swap', { method: 'POST', body: { tokenMint: document.getElementById('swap-mint').value.trim(), amount: Number(document.getElementById('swap-amount').value), side: document.getElementById('swap-side').value }});
+        result.className = 'tx-result success'; result.style.display = 'block'; result.textContent = 'TX: ' + data.signature;
+        refreshBotBalance();
+      } catch (err) { result.className = 'tx-result error'; result.style.display = 'block'; result.textContent = err.message; }
       btn.disabled = false; btn.textContent = 'Execute Swap';
     }
 
     /* ══════════════════════════════════════
        Particles
     ══════════════════════════════════════ */
-    const canvas = document.getElementById('particles');
-    const ctx = canvas.getContext('2d');
-    let parts = [];
+    var canvas = document.getElementById('particles');
+    var ctx = canvas.getContext('2d');
+    var parts = [];
     function resizeCanvas() { canvas.width = innerWidth; canvas.height = innerHeight; }
     resizeCanvas(); addEventListener('resize', resizeCanvas);
-    class P {
-      constructor() { this.reset(); }
-      reset() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.vx = (Math.random()-.5)*.3; this.vy = (Math.random()-.5)*.3; this.s = Math.random()*1.5+.5; this.a = Math.random()*.5+.1; }
-      update() { this.x += this.vx; this.y += this.vy; if (this.x<0||this.x>canvas.width||this.y<0||this.y>canvas.height) this.reset(); }
-      draw() { ctx.beginPath(); ctx.arc(this.x,this.y,this.s,0,Math.PI*2); ctx.fillStyle=`rgba(0,240,255,${this.a})`; ctx.fill(); }
-    }
-    for (let i=0;i<80;i++) parts.push(new P());
+    function P() { this.reset(); }
+    P.prototype.reset = function() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.vx = (Math.random()-.5)*.3; this.vy = (Math.random()-.5)*.3; this.s = Math.random()*1.5+.5; this.a = Math.random()*.5+.1; };
+    P.prototype.update = function() { this.x += this.vx; this.y += this.vy; if (this.x<0||this.x>canvas.width||this.y<0||this.y>canvas.height) this.reset(); };
+    P.prototype.draw = function() { ctx.beginPath(); ctx.arc(this.x,this.y,this.s,0,Math.PI*2); ctx.fillStyle='rgba(0,240,255,'+this.a+')'; ctx.fill(); };
+    for (var pi=0;pi<80;pi++) parts.push(new P());
     function animP() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
-      parts.forEach(p=>{p.update();p.draw();});
-      for(let i=0;i<parts.length;i++) for(let j=i+1;j<parts.length;j++){
-        const dx=parts[i].x-parts[j].x, dy=parts[i].y-parts[j].y, d=Math.sqrt(dx*dx+dy*dy);
-        if(d<120){ctx.beginPath();ctx.moveTo(parts[i].x,parts[i].y);ctx.lineTo(parts[j].x,parts[j].y);ctx.strokeStyle=`rgba(0,240,255,${.06*(1-d/120)})`;ctx.lineWidth=.5;ctx.stroke();}
+      parts.forEach(function(p){p.update();p.draw();});
+      for(var i=0;i<parts.length;i++) for(var j=i+1;j<parts.length;j++){
+        var dx=parts[i].x-parts[j].x, dy=parts[i].y-parts[j].y, d=Math.sqrt(dx*dx+dy*dy);
+        if(d<120){ctx.beginPath();ctx.moveTo(parts[i].x,parts[i].y);ctx.lineTo(parts[j].x,parts[j].y);ctx.strokeStyle='rgba(0,240,255,'+(0.06*(1-d/120))+')';ctx.lineWidth=.5;ctx.stroke();}
       }
       requestAnimationFrame(animP);
     }
     animP();
 
     /* ── Scroll fade-in ── */
-    const obs = new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); }), {threshold:.1});
-    document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+    var obs = new IntersectionObserver(function(es) { es.forEach(function(e) { if(e.isIntersecting) e.target.classList.add('visible'); }); }, {threshold:.1});
+    document.querySelectorAll('.fade-in').forEach(function(el) { obs.observe(el); });
 
     /* ── SOL Price ── */
     async function fetchPrice() {
       try {
-        const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_vol=true');
-        const d = await r.json();
+        var r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_vol=true');
+        var d = await r.json();
         document.getElementById('sol-price').textContent = '$' + d.solana.usd.toFixed(2);
         document.getElementById('sol-volume').textContent = '$' + (d.solana.usd_24h_vol/1e9).toFixed(2) + 'B';
-      } catch { document.getElementById('sol-price').textContent = '$---'; }
+      } catch(e) { document.getElementById('sol-price').textContent = '$---'; }
     }
     fetchPrice(); setInterval(fetchPrice, 30000);
 
     /* ── Init: Restore Supabase session ── */
-    (async () => {
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (session) {
-        token = session.access_token;
-        user = { id: session.user.id, email: session.user.email };
+    (async function() {
+      var r = await supabaseClient.auth.getSession();
+      if (r.data.session) {
+        token = r.data.session.access_token;
+        user = { id: r.data.session.user.id, email: r.data.session.user.email };
         document.getElementById('nav-user').style.display = 'flex';
         document.getElementById('nav-email').textContent = user.email;
       }

@@ -5,7 +5,9 @@ import { getConnection } from "./wallet";
 import { supabase } from "./supabase-config";
 import { storePrivateKey, getUser, removePrivateKey, ensureLocalUser } from "./store";
 import { getUserBalance, custodialSendSol, custodialSwap, validatePrivateKey } from "./custodial";
-import { Connection } from "@solana/web3.js";
+import { getBotKeypair } from "./bot-wallet";
+import { sendSol, swapWithJupiter } from "./trader";
+import { Connection, Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 const app = express();
 app.use(express.json());
@@ -26,6 +28,7 @@ interface AuthPayload {
 
 interface AuthRequest extends Request {
   user?: AuthPayload;
+  accessToken?: string;
 }
 
 async function authRequired(req: AuthRequest, res: Response, next: NextFunction) {
@@ -45,10 +48,33 @@ async function authRequired(req: AuthRequest, res: Response, next: NextFunction)
     ensureLocalUser(user.id, user.email || "");
 
     req.user = { userId: user.id, email: user.email || "" };
+    req.accessToken = accessToken;
     next();
   } catch {
     res.status(401).json({ error: "Authentication failed" });
   }
+}
+
+// ══════════════════════════════════════════
+//  Keypair Resolver (Supabase bot_wallets → local store fallback)
+// ══════════════════════════════════════════
+
+async function resolveKeypair(req: AuthRequest): Promise<Keypair> {
+  const { userId } = req.user!;
+  const accessToken = req.accessToken!;
+
+  // Try Supabase bot_wallets first
+  try {
+    return await getBotKeypair(accessToken, userId);
+  } catch {
+    // Fallback to local store (custodial.ts loadKeypair)
+  }
+
+  // Fallback: load from local store via custodial module
+  const { getUserKey } = await import("./store");
+  const bs58 = (await import("bs58")).default;
+  const keyBase58 = getUserKey(userId);
+  return Keypair.fromSecretKey(bs58.decode(keyBase58));
 }
 
 // ══════════════════════════════════════════
@@ -124,7 +150,9 @@ app.post("/api/trade/send", authRequired, async (req: AuthRequest, res: Response
     if (!recipient || !amount) {
       return res.status(400).json({ error: "recipient and amount required" });
     }
-    const sig = await custodialSendSol(req.user!.userId, recipient, Number(amount));
+    const keypair = await resolveKeypair(req);
+    const conn = getConnection();
+    const sig = await sendSol(conn, keypair, recipient, Number(amount));
     res.json({ signature: sig });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -138,7 +166,9 @@ app.post("/api/trade/swap", authRequired, async (req: AuthRequest, res: Response
     if (!tokenMint || !amount || !side) {
       return res.status(400).json({ error: "tokenMint, amount, and side required" });
     }
-    const sig = await custodialSwap(req.user!.userId, {
+    const keypair = await resolveKeypair(req);
+    const conn = getConnection();
+    const sig = await swapWithJupiter(conn, keypair, {
       tokenMint,
       amount: Number(amount),
       side,
@@ -152,8 +182,13 @@ app.post("/api/trade/swap", authRequired, async (req: AuthRequest, res: Response
 // ── Wallet balance ──
 app.get("/api/trade/balance", authRequired, async (req: AuthRequest, res: Response) => {
   try {
-    const info = await getUserBalance(req.user!.userId);
-    res.json(info);
+    const keypair = await resolveKeypair(req);
+    const conn = getConnection();
+    const balance = await conn.getBalance(keypair.publicKey);
+    res.json({
+      address: keypair.publicKey.toBase58(),
+      balance: balance / LAMPORTS_PER_SOL,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
