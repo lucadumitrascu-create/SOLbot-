@@ -1,27 +1,20 @@
 {
-  "name": "solbot",
+  "name": "solbot-pro",
   "version": "1.0.0",
-  "description": "Solana trading bot with secure key management",
-  "main": "dist/server.js",
+  "private": true,
+  "description": "SOLbot Pro - Solana memecoin trading toolkit",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/server.js",
-    "dev": "ts-node src/server.ts",
-    "bot": "ts-node src/index.ts",
-    "deploy": "bash deploy.sh"
+    "dev": "pnpm --parallel -r run dev",
+    "dev:web": "pnpm --filter @solbot/web dev",
+    "dev:api": "pnpm --filter @solbot/api dev",
+    "build": "pnpm -r run build",
+    "build:web": "pnpm --filter @solbot/web build",
+    "build:api": "pnpm --filter @solbot/api build",
+    "lint": "pnpm -r run lint",
+    "clean": "pnpm -r run clean"
   },
-  "dependencies": {
-    "@solana/spl-token": "^0.4.0",
-    "@solana/web3.js": "^1.95.0",
-    "@supabase/supabase-js": "^2.95.3",
-    "bs58": "^6.0.0",
-    "dotenv": "^16.4.0",
-    "express": "^4.21.0"
-  },
-  "devDependencies": {
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.0.0",
-    "ts-node": "^10.9.0",
-    "typescript": "^5.5.0"
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
   }
 }

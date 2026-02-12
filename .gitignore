@@ -1,16 +1,21 @@
-# Environment variables (CRITICAL - never commit private keys)
+# Environment variables
 .env
 .env.local
 .env.production
+.env.*.local
 
 # Dependencies
 node_modules/
 
 # Build output
 dist/
+.next/
+out/
 
 # Logs
 *.log
+npm-debug.log*
+pnpm-debug.log*
 
 # OS files
 .DS_Store
@@ -19,9 +24,17 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
-# Docker
-.dockerignore
+# Turbo
+.turbo/
 
-# User data (encrypted keys)
+# Vercel
+.vercel/
+
+# Testing
+coverage/
+
+# User data
 data/
