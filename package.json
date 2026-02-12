@@ -1,17 +1,21 @@
 {
   "name": "solbot-pro",
-  "version": "1.0.0",
   "private": true,
-  "description": "SOLbot Pro - Solana memecoin trading toolkit",
   "scripts": {
-    "dev": "pnpm --parallel -r run dev",
+    "dev": "pnpm --parallel dev",
     "dev:web": "pnpm --filter @solbot/web dev",
     "dev:api": "pnpm --filter @solbot/api dev",
-    "build": "pnpm -r run build",
+    "build": "pnpm -r build",
     "build:web": "pnpm --filter @solbot/web build",
     "build:api": "pnpm --filter @solbot/api build",
-    "lint": "pnpm -r run lint",
+    "lint": "pnpm -r lint",
     "clean": "pnpm -r run clean"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "prettier": "^3.1.0",
+    "eslint": "^8.55.0"
   },
   "engines": {
     "node": ">=18.0.0",
