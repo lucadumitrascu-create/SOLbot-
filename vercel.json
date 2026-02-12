@@ -1,0 +1,7 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "cd ../.. && pnpm install && pnpm --filter @solbot/web build",
+  "outputDirectory": ".next",
+  "installCommand": "corepack enable && pnpm install",
+  "rootDirectory": "apps/web"
+}
