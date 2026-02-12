@@ -1,23 +1,27 @@
--- Run this in your Supabase SQL Editor to create the bot_wallets table + RLS
+-- Run this in your Supabase SQL Editor
+-- Phantom Wallet-based auth (no Supabase Auth)
 
-create table if not exists bot_wallets (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  public_key text not null,
-  private_key text not null,
-  phantom_wallet text,
+-- Drop old table if it exists (was linked to auth.users)
+drop table if exists bot_wallets;
+
+-- Users table (wallet-based, no email/password)
+create table if not exists users (
+  wallet_address text primary key,
   created_at timestamptz default now()
 );
 
+-- Bot wallets table
+create table if not exists bot_wallets (
+  wallet_address text primary key references users(wallet_address) on delete cascade,
+  public_key text not null,
+  private_key text not null,
+  created_at timestamptz default now()
+);
+
+-- Enable RLS
+alter table users enable row level security;
 alter table bot_wallets enable row level security;
 
-create policy "Users can read own wallet"
-  on bot_wallets for select
-  using (auth.uid() = user_id);
-
-create policy "Users can insert own wallet"
-  on bot_wallets for insert
-  with check (auth.uid() = user_id);
-
-create policy "Users can update own wallet"
-  on bot_wallets for update
-  using (auth.uid() = user_id);
+-- Permissive policies (security enforced by Express server middleware)
+create policy "Server manages users" on users for all using (true) with check (true);
+create policy "Server manages bot_wallets" on bot_wallets for all using (true) with check (true);

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SOLbot — Custodial Trading Engine</title>
+  <title>SOLbot — Trading Engine</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -54,7 +54,7 @@
     .nav-links a { color: #888; text-decoration: none; font-weight: 600; font-size: .9rem; letter-spacing: 1px; text-transform: uppercase; transition: color .3s; }
     .nav-links a:hover { color: var(--neon-cyan); }
     #nav-user { display: none; align-items: center; gap: .8rem; }
-    #nav-user .user-email { color: var(--neon-cyan); font-size: .85rem; font-weight: 600; }
+    #nav-user .wallet-addr { color: var(--neon-cyan); font-family: 'Courier New', monospace; font-size: .8rem; font-weight: 600; }
 
     /* ── Buttons ── */
     .btn {
@@ -66,6 +66,8 @@
     }
     .btn-primary { background: linear-gradient(135deg,var(--neon-cyan),var(--neon-purple)); color: #000; box-shadow: 0 0 30px rgba(0,240,255,.3); }
     .btn-primary:hover { box-shadow: 0 0 50px rgba(0,240,255,.5); transform: translateY(-2px); }
+    .btn-phantom { background: linear-gradient(135deg, #ab9ff2, #6c5ce7); color: #fff; box-shadow: 0 0 30px rgba(108,92,231,.3); font-size: 1rem; padding: .9rem 2.5rem; }
+    .btn-phantom:hover { box-shadow: 0 0 50px rgba(108,92,231,.5); transform: translateY(-2px); }
     .btn-outline { background: transparent; color: var(--neon-cyan); border: 1px solid rgba(0,240,255,.4); }
     .btn-outline:hover { background: rgba(0,240,255,.1); transform: translateY(-2px); }
     .btn-danger { background: rgba(255,68,102,.15); color: var(--neon-red); border: 1px solid rgba(255,68,102,.3); }
@@ -95,6 +97,18 @@
     .ticker-value.green { color: var(--neon-green); }
     .ticker-value.purple { color: var(--neon-purple); }
 
+    /* ── Info Box ── */
+    .info-box {
+      margin-top: 3rem; max-width: 520px; padding: 2rem;
+      background: var(--card-bg); border: 1px solid rgba(0,240,255,.1);
+      border-radius: 16px; backdrop-filter: blur(10px); text-align: left;
+    }
+    .info-box h3 { font-family: 'Orbitron', monospace; font-size: .9rem; color: var(--neon-cyan); margin-bottom: 1.2rem; letter-spacing: 1px; }
+    .info-steps { list-style: none; counter-reset: steps; }
+    .info-steps li { counter-increment: steps; position: relative; padding: .6rem 0 .6rem 2.5rem; color: #888; font-size: .95rem; border-left: 1px solid rgba(0,240,255,.1); margin-left: .7rem; }
+    .info-steps li::before { content: counter(steps); position: absolute; left: -10px; top: .5rem; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,240,255,.12); border: 1px solid rgba(0,240,255,.25); color: var(--neon-cyan); font-size: .7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .info-steps li:last-child { border-left-color: transparent; }
+
     /* ── Features ── */
     .features { padding: 6rem 2rem; }
     .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
@@ -106,40 +120,18 @@
     .feature-card h3 { font-family: 'Orbitron', monospace; font-size: 1rem; margin-bottom: .6rem; color: #fff; }
     .feature-card p { color: #666; font-size: .95rem; line-height: 1.5; }
 
-    /* ── Modal ── */
-    .modal-overlay {
-      display: none; position: fixed; inset: 0; z-index: 200;
-      background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
-      justify-content: center; align-items: center;
-    }
-    .modal-overlay.active { display: flex; }
-    .modal {
-      background: #0d0d18; border: 1px solid rgba(0,240,255,.15);
-      border-radius: 20px; padding: 2.5rem; width: 100%; max-width: 440px;
-      position: relative; box-shadow: 0 40px 100px rgba(0,0,0,.8);
-    }
-    .modal h2 { font-family: 'Orbitron', monospace; font-size: 1.4rem; margin-bottom: 1.5rem; text-align: center; }
-    .modal-close { position: absolute; top: 1rem; right: 1.2rem; background: none; border: none; color: #555; font-size: 1.5rem; cursor: pointer; }
-    .modal-close:hover { color: #fff; }
-
     /* ── Forms ── */
     .form-group { margin-bottom: 1.2rem; }
     .form-group label { display: block; font-size: .75rem; color: #666; text-transform: uppercase; letter-spacing: 2px; margin-bottom: .4rem; }
-    .form-group input, .form-group select, .form-group textarea {
+    .form-group input, .form-group select {
       width: 100%; padding: .75rem 1rem; background: rgba(255,255,255,.04);
       border: 1px solid rgba(255,255,255,.1); border-radius: 8px;
       color: #e0e0e0; font-family: 'Rajdhani', sans-serif; font-size: 1rem;
       transition: border-color .3s; outline: none;
     }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--neon-cyan); }
-    .form-group textarea { resize: vertical; font-family: 'Courier New', monospace; font-size: .85rem; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--neon-cyan); }
     .form-group select { cursor: pointer; }
     .form-group select option { background: #0d0d18; }
-    .form-error { color: var(--neon-red); font-size: .85rem; margin-top: .5rem; display: none; }
-    .form-success { color: var(--neon-green); font-size: .85rem; margin-top: .5rem; display: none; }
-    .form-tabs { display: flex; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,.08); }
-    .form-tab { flex: 1; padding: .7rem; text-align: center; font-weight: 700; font-size: .85rem; text-transform: uppercase; letter-spacing: 2px; color: #555; cursor: pointer; border-bottom: 2px solid transparent; transition: all .3s; }
-    .form-tab.active { color: var(--neon-cyan); border-bottom-color: var(--neon-cyan); }
 
     /* ── Dashboard ── */
     .dashboard { display: none; min-height: 100vh; padding-top: 6rem; padding-bottom: 4rem; }
@@ -158,11 +150,30 @@
     .dash-stat .value.green { color: var(--neon-green); }
     .dash-stat .value.purple { color: var(--neon-purple); }
     .dash-address { font-family: 'Courier New', monospace; font-size: .8rem; color: var(--neon-purple); word-break: break-all; }
+    .copy-btn { background: rgba(0,240,255,.1); border: 1px solid rgba(0,240,255,.2); color: var(--neon-cyan); padding: .4rem .8rem; border-radius: 6px; font-size: .75rem; font-family: 'Rajdhani', sans-serif; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all .2s; }
+    .copy-btn:hover { background: rgba(0,240,255,.2); }
 
     /* ── TX result ── */
     .tx-result { margin-top: 1rem; padding: .8rem; border-radius: 8px; font-family: 'Courier New', monospace; font-size: .8rem; word-break: break-all; display: none; }
     .tx-result.success { background: rgba(0,255,136,.08); border: 1px solid rgba(0,255,136,.2); color: var(--neon-green); }
     .tx-result.error { background: rgba(255,68,102,.08); border: 1px solid rgba(255,68,102,.2); color: var(--neon-red); }
+
+    /* ── Loading ── */
+    .dash-loading { text-align: center; padding: 4rem 2rem; }
+    .dash-loading .spinner { display: inline-block; width: 48px; height: 48px; border: 3px solid rgba(0,240,255,.15); border-top-color: var(--neon-cyan); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 1.5rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .dash-loading p { color: #666; font-size: 1rem; }
+
+    /* ── Notification ── */
+    .notification {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-100px);
+      padding: 1rem 2rem; border-radius: 12px;
+      font-weight: 700; font-size: .9rem; z-index: 150;
+      transition: transform .4s ease; pointer-events: none;
+    }
+    .notification.show { transform: translateX(-50%) translateY(0); }
+    .notification.success { background: rgba(0,255,136,.12); border: 1px solid rgba(0,255,136,.3); color: var(--neon-green); }
+    .notification.error { background: rgba(255,68,102,.12); border: 1px solid rgba(255,68,102,.3); color: var(--neon-red); }
 
     /* ── Landing visibility ── */
     .landing { display: block; }
@@ -175,33 +186,12 @@
     .fade-in { opacity: 0; transform: translateY(30px); transition: opacity .8s ease, transform .8s ease; }
     .fade-in.visible { opacity: 1; transform: translateY(0); }
 
-    /* ── Wizard ── */
-    .wizard-steps { display: flex; margin-bottom: 2rem; position: relative; }
-    .wizard-steps::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: rgba(255,255,255,.05); }
-    .wizard-step { flex: 1; text-align: center; padding: .8rem .5rem; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #333; position: relative; transition: all .3s; }
-    .wizard-step::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: transparent; transition: all .3s; z-index: 1; }
-    .wizard-step.active { color: var(--neon-cyan); }
-    .wizard-step.active::after { background: var(--neon-cyan); }
-    .wizard-step.done { color: var(--neon-green); }
-    .wizard-step.done::after { background: var(--neon-green); }
-    .wizard-step .step-num { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; font-size: .7rem; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); margin-right: .3rem; }
-    .wizard-step.active .step-num { background: rgba(0,240,255,.15); border-color: rgba(0,240,255,.3); }
-    .wizard-step.done .step-num { background: rgba(0,255,136,.15); border-color: rgba(0,255,136,.3); }
-    .wizard-panel { min-height: 180px; padding: 1rem 0; }
-    .wizard-panel p { color: #777; margin-bottom: 1.5rem; line-height: 1.6; font-size: .95rem; }
-    .wizard-nav { display: flex; justify-content: space-between; margin-top: 1.5rem; padding-top: 1.2rem; border-top: 1px solid rgba(255,255,255,.06); }
-    .wizard-address { font-family: 'Courier New', monospace; font-size: .8rem; color: var(--neon-purple); word-break: break-all; background: rgba(180,74,255,.06); padding: .6rem; border-radius: 8px; border: 1px solid rgba(180,74,255,.15); margin: .8rem 0; }
-    .copy-btn { background: rgba(0,240,255,.1); border: 1px solid rgba(0,240,255,.2); color: var(--neon-cyan); padding: .4rem .8rem; border-radius: 6px; font-size: .75rem; font-family: 'Rajdhani', sans-serif; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all .2s; }
-    .copy-btn:hover { background: rgba(0,240,255,.2); }
-
     @media (max-width: 768px) {
       nav { padding: 1rem 1.5rem; }
       .nav-links { display: none; }
       .dash-grid { grid-template-columns: 1fr; }
-      .modal { margin: 1rem; }
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
 </head>
 <body>
@@ -211,32 +201,45 @@
   <div class="bg-glow purple"></div>
   <canvas id="particles"></canvas>
 
+  <!-- Notification -->
+  <div class="notification" id="notification"></div>
+
   <!-- Nav -->
   <nav>
-    <div class="logo" onclick="showLanding()">SOLbot<sub>custodial</sub></div>
+    <div class="logo" onclick="showLanding()">SOLbot<sub>engine</sub></div>
     <div class="nav-right">
       <ul class="nav-links" id="nav-landing-links">
         <li><a href="#features">Features</a></li>
-        <li><a href="#" onclick="openAuth(event)">Login</a></li>
+        <li><a href="#" onclick="connectPhantom(event)">Connect Wallet</a></li>
       </ul>
       <div id="nav-user">
-        <span class="user-email" id="nav-email"></span>
+        <span class="wallet-addr" id="nav-wallet"></span>
         <button class="btn btn-outline btn-sm" onclick="showDashboard()">Dashboard</button>
         <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>
       </div>
     </div>
   </nav>
 
-  <!-- ═══════ LANDING ═══════ -->
+  <!-- LANDING -->
   <div class="landing" id="landing">
     <section class="hero">
       <div class="hero-badge"><div class="dot"></div> Mainnet Live</div>
-      <h1><span class="gradient">Custodial</span><br />Trading Engine</h1>
-      <p>Deposit your key once. Trade instantly from anywhere. Server-side signing. Jupiter-routed swaps. Zero wallet popups.</p>
+      <h1><span class="gradient">One-Click</span><br />Trading Engine</h1>
+      <p>Connect your Phantom wallet. A trading bot wallet is auto-generated. Trade instantly. Zero friction.</p>
       <div class="hero-buttons">
-        <button class="btn btn-primary" onclick="openAuth()">Start Trading</button>
-        <a href="#features" class="btn btn-outline">How it Works</a>
+        <button class="btn btn-phantom" onclick="connectPhantom()" id="hero-connect-btn">Connect Phantom Wallet</button>
       </div>
+
+      <div class="info-box fade-in">
+        <h3>What happens next?</h3>
+        <ol class="info-steps">
+          <li>Connect your Phantom wallet</li>
+          <li>Sign a message to verify ownership</li>
+          <li>A trading bot wallet is auto-created</li>
+          <li>Start trading instantly — no popups</li>
+        </ol>
+      </div>
+
       <div class="ticker">
         <div class="ticker-item">
           <div class="ticker-label">SOL / USD</div>
@@ -247,25 +250,25 @@
           <div class="ticker-value purple" id="sol-volume">--</div>
         </div>
         <div class="ticker-item">
-          <div class="ticker-label">Signing</div>
-          <div class="ticker-value green">SERVER</div>
+          <div class="ticker-label">Auth</div>
+          <div class="ticker-value green">PHANTOM</div>
         </div>
       </div>
     </section>
 
     <section class="features" id="features">
-      <h2 class="section-title fade-in">Custodial Architecture</h2>
-      <p class="section-sub fade-in">Your key is stored on operator-controlled infrastructure. Backend signs and sends instantly.</p>
+      <h2 class="section-title fade-in">How It Works</h2>
+      <p class="section-sub fade-in">One wallet. Auto-generated bot keypair. Server-side signing. Jupiter-routed swaps.</p>
       <div class="features-grid">
         <div class="feature-card fade-in">
-          <div class="feature-icon">&#128274;</div>
-          <h3>Secure Storage</h3>
-          <p>Private keys stored on operator-controlled infrastructure with restricted file permissions. No external access.</p>
+          <div class="feature-icon">&#128123;</div>
+          <h3>Phantom Login</h3>
+          <p>No email. No password. Connect Phantom, sign a message, and you're in. One click to authenticate.</p>
         </div>
         <div class="feature-card fade-in">
           <div class="feature-icon">&#9889;</div>
-          <h3>Instant Signing</h3>
-          <p>No wallet popups, no browser extensions. Backend loads key, signs, and sends in one atomic operation.</p>
+          <h3>Auto Bot Wallet</h3>
+          <p>A dedicated trading keypair is generated automatically on first login. No setup wizard needed.</p>
         </div>
         <div class="feature-card fade-in">
           <div class="feature-icon">&#128640;</div>
@@ -273,9 +276,9 @@
           <p>Every swap is routed through 40+ Solana DEXes via Jupiter for best price and minimum slippage.</p>
         </div>
         <div class="feature-card fade-in">
-          <div class="feature-icon">&#128200;</div>
-          <h3>Trade Limits</h3>
-          <p>Configurable max SOL per trade and slippage BPS. Circuit breakers prevent ruinous executions.</p>
+          <div class="feature-icon">&#128274;</div>
+          <h3>Server-Side Signing</h3>
+          <p>Bot wallet signs transactions server-side. No wallet popups during trades. Instant execution.</p>
         </div>
         <div class="feature-card fade-in">
           <div class="feature-icon">&#127760;</div>
@@ -283,247 +286,130 @@
           <p>Direct RPC to Solana mainnet-beta. No middleware. Sub-second confirmed transactions.</p>
         </div>
         <div class="feature-card fade-in">
-          <div class="feature-icon">&#129302;</div>
-          <h3>Full Autonomy</h3>
-          <p>Deposit key, set parameters, trade via API or dashboard. No manual confirmation needed.</p>
+          <div class="feature-icon">&#128200;</div>
+          <h3>Trade Limits</h3>
+          <p>Configurable max SOL per trade and slippage BPS. Circuit breakers prevent ruinous executions.</p>
         </div>
       </div>
     </section>
   </div>
 
-  <!-- ═══════ AUTH MODAL ═══════ -->
-  <div class="modal-overlay" id="auth-modal">
-    <div class="modal">
-      <button class="modal-close" onclick="closeAuth()">&times;</button>
-      <h2>Access Terminal</h2>
-      <div class="form-tabs">
-        <div class="form-tab active" onclick="switchTab('login')">Login</div>
-        <div class="form-tab" onclick="switchTab('register')">Register</div>
-      </div>
-      <form id="login-form" onsubmit="handleLogin(event)">
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="login-email" required autocomplete="email" />
-        </div>
-        <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="login-password" required autocomplete="current-password" />
-        </div>
-        <div class="form-error" id="login-error"></div>
-        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">Login</button>
-      </form>
-      <form id="register-form" style="display:none" onsubmit="handleRegister(event)">
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="reg-email" required autocomplete="email" />
-        </div>
-        <div class="form-group">
-          <label>Password (min 8 chars)</label>
-          <input type="password" id="reg-password" required minlength="8" autocomplete="new-password" />
-        </div>
-        <div class="form-error" id="reg-error"></div>
-        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">Create Account</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- ═══════ SETUP WIZARD ═══════ -->
-  <div class="modal-overlay" id="setup-wizard">
-    <div class="modal" style="max-width:520px">
-      <h2>Bot Wallet Setup</h2>
-      <div class="wizard-steps">
-        <div class="wizard-step active" id="wiz-ind-1"><span class="step-num">1</span> Phantom</div>
-        <div class="wizard-step" id="wiz-ind-2"><span class="step-num">2</span> Generate</div>
-        <div class="wizard-step" id="wiz-ind-3"><span class="step-num">3</span> Fund</div>
-        <div class="wizard-step" id="wiz-ind-4"><span class="step-num">4</span> Done</div>
-      </div>
-
-      <!-- Step 1: Connect Phantom -->
-      <div class="wizard-panel" id="wiz-step-1">
-        <p>Connect your Phantom wallet to link it with your trading bot. This is used only for the initial funding.</p>
-        <button class="btn btn-primary" onclick="wizConnectPhantom()" id="wiz-phantom-btn">Connect Phantom</button>
-        <div class="form-success" id="wiz-phantom-addr"></div>
-      </div>
-
-      <!-- Step 2: Generate Bot Keypair -->
-      <div class="wizard-panel" id="wiz-step-2" style="display:none">
-        <p>Generate a dedicated keypair for your trading bot. This key is stored in Supabase and used to sign transactions automatically.</p>
-        <button class="btn btn-primary" onclick="wizGenerateKeypair()" id="wiz-gen-btn">Generate Bot Keypair</button>
-        <div class="form-success" id="wiz-gen-addr"></div>
-        <div class="form-error" id="wiz-gen-err"></div>
-      </div>
-
-      <!-- Step 3: Transfer SOL -->
-      <div class="wizard-panel" id="wiz-step-3" style="display:none">
-        <p>Transfer SOL from Phantom to fund the bot. This is the only time Phantom will prompt you.</p>
-        <div class="wizard-address" id="wiz-bot-addr"></div>
-        <div class="form-group">
-          <label>Amount (SOL)</label>
-          <input type="number" id="wiz-fund-amount" step="0.01" min="0.01" value="0.05" />
-        </div>
-        <button class="btn btn-primary" onclick="wizTransferSol()" id="wiz-fund-btn">Transfer from Phantom</button>
-        <div style="margin-top:.6rem"><a href="#" onclick="wizSkipFund(event)" style="color:#555;font-size:.8rem">Skip — fund later from dashboard</a></div>
-        <div class="form-success" id="wiz-fund-status"></div>
-        <div class="form-error" id="wiz-fund-err"></div>
-      </div>
-
-      <!-- Step 4: Success -->
-      <div class="wizard-panel" id="wiz-step-4" style="display:none">
-        <div style="text-align:center;padding:1.5rem 0">
-          <span style="font-size:4rem;display:block;margin-bottom:1rem">&#9989;</span>
-          <h3 style="color:var(--neon-green);font-family:'Orbitron',monospace;margin-bottom:.5rem">Setup Complete!</h3>
-          <p style="color:#666;margin:.8rem 0">Your bot wallet is ready. It can now trade autonomously without Phantom popups.</p>
-          <div class="wizard-address" id="wiz-final-addr"></div>
-        </div>
-        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="wizFinish()">Go to Dashboard</button>
-      </div>
-
-      <div class="wizard-nav" id="wiz-nav">
-        <button class="btn btn-outline btn-sm" id="wiz-back-btn" onclick="wizBack()" style="visibility:hidden">Back</button>
-        <button class="btn btn-primary btn-sm" id="wiz-next-btn" onclick="wizNext()" disabled>Next</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════ DASHBOARD ═══════ -->
+  <!-- DASHBOARD -->
   <section class="dashboard" id="dashboard">
-    <h2 class="section-title" style="padding-top:1rem">Command Center</h2>
-    <p class="section-sub">Bot wallet active. Trade, withdraw, and monitor balances.</p>
+    <!-- Loading State -->
+    <div class="dash-loading" id="dash-loading">
+      <div class="spinner"></div>
+      <p id="dash-loading-text">Loading your dashboard...</p>
+    </div>
 
-    <div class="dash-grid">
-      <!-- Bot Wallet Card -->
-      <div class="dash-card">
-        <h3>Bot Wallet</h3>
-        <div class="dash-stat">
-          <span class="label">Address</span>
-          <span class="value" id="dash-address">--</span>
-        </div>
-        <div style="margin:.5rem 0">
-          <button class="copy-btn" id="copy-addr-btn" onclick="copyBotAddress()">Copy Address</button>
-        </div>
-        <div class="dash-stat">
-          <span class="label">Balance</span>
-          <span class="value green" id="dash-balance">--</span>
-        </div>
-        <div class="dash-stat">
-          <span class="label">Network</span>
-          <span class="value cyan" id="dash-network">mainnet-beta</span>
-        </div>
-        <div class="dash-stat">
-          <span class="label">Phantom</span>
-          <span class="value purple" id="dash-phantom">--</span>
-        </div>
-        <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="refreshBotBalance()">Refresh</button>
-          <button class="btn btn-primary btn-sm" onclick="addFundsPhantom()">Add Funds</button>
-        </div>
-      </div>
+    <!-- Dashboard Content (hidden until loaded) -->
+    <div id="dash-content" style="display:none">
+      <h2 class="section-title" style="padding-top:1rem">Command Center</h2>
+      <p class="section-sub">Bot wallet active. Trade, withdraw, and monitor balances.</p>
 
-      <!-- Withdraw Card -->
-      <div class="dash-card">
-        <h3>Withdraw</h3>
-        <p style="color:#666;font-size:.85rem;margin-bottom:1rem">Withdraw SOL from your bot wallet. Bot signs automatically — no popups.</p>
-        <form onsubmit="handleWithdraw(event)">
-          <div class="form-group">
-            <label>Destination Address</label>
-            <input type="text" id="withdraw-dest" placeholder="Solana address" required />
+      <div class="dash-grid">
+        <!-- Bot Wallet Card -->
+        <div class="dash-card">
+          <h3>Bot Wallet</h3>
+          <div class="dash-stat">
+            <span class="label">Address</span>
+            <span class="value" id="dash-bot-address">--</span>
           </div>
-          <div class="form-group">
-            <label>Amount (SOL)</label>
-            <input type="number" id="withdraw-amount" step="0.001" min="0.001" placeholder="0.01" required />
+          <div style="margin:.5rem 0">
+            <button class="copy-btn" id="copy-addr-btn" onclick="copyBotAddress()">Copy Address</button>
           </div>
-          <button type="submit" class="btn btn-primary btn-sm" id="withdraw-btn">Withdraw</button>
-        </form>
-        <div class="tx-result" id="withdraw-result"></div>
-      </div>
+          <div class="dash-stat">
+            <span class="label">Balance</span>
+            <span class="value green" id="dash-balance">--</span>
+          </div>
+          <div class="dash-stat">
+            <span class="label">Network</span>
+            <span class="value cyan" id="dash-network">mainnet-beta</span>
+          </div>
+          <div class="dash-stat">
+            <span class="label">Phantom</span>
+            <span class="value purple" id="dash-phantom">--</span>
+          </div>
+          <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
+            <button class="btn btn-outline btn-sm" onclick="refreshBalance()">Refresh</button>
+            <button class="btn btn-primary btn-sm" onclick="addFundsPhantom()">Add Funds</button>
+          </div>
+        </div>
 
-      <!-- Send SOL Card -->
-      <div class="dash-card">
-        <h3>Send SOL</h3>
-        <form onsubmit="handleSend(event)">
-          <div class="form-group">
-            <label>Recipient Address</label>
-            <input type="text" id="send-recipient" placeholder="Solana address" required />
-          </div>
-          <div class="form-group">
-            <label>Amount (SOL)</label>
-            <input type="number" id="send-amount" step="0.001" min="0.001" placeholder="0.01" required />
-          </div>
-          <button type="submit" class="btn btn-primary btn-sm" id="send-btn">Send</button>
-        </form>
-        <div class="tx-result" id="send-result"></div>
-      </div>
+        <!-- Withdraw Card -->
+        <div class="dash-card">
+          <h3>Withdraw</h3>
+          <p style="color:#666;font-size:.85rem;margin-bottom:1rem">Withdraw SOL from your bot wallet. Bot signs automatically.</p>
+          <form onsubmit="handleSend(event, 'withdraw')">
+            <div class="form-group">
+              <label>Destination Address</label>
+              <input type="text" id="withdraw-dest" placeholder="Solana address" required />
+            </div>
+            <div class="form-group">
+              <label>Amount (SOL)</label>
+              <input type="number" id="withdraw-amount" step="0.001" min="0.001" placeholder="0.01" required />
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" id="withdraw-btn">Withdraw</button>
+          </form>
+          <div class="tx-result" id="withdraw-result"></div>
+        </div>
 
-      <!-- Swap Card -->
-      <div class="dash-card">
-        <h3>Jupiter Swap</h3>
-        <form onsubmit="handleSwap(event)">
-          <div class="form-group">
-            <label>Token Mint Address</label>
-            <input type="text" id="swap-mint" placeholder="Token mint address" required />
-          </div>
-          <div class="form-group">
-            <label>Amount (SOL)</label>
-            <input type="number" id="swap-amount" step="0.001" min="0.001" placeholder="0.05" required />
-          </div>
-          <div class="form-group">
-            <label>Side</label>
-            <select id="swap-side">
-              <option value="buy">Buy (SOL -> Token)</option>
-              <option value="sell">Sell (Token -> SOL)</option>
-            </select>
-          </div>
-          <button type="submit" class="btn btn-primary btn-sm" id="swap-btn">Execute Swap</button>
-        </form>
-        <div class="tx-result" id="swap-result"></div>
+        <!-- Send SOL Card -->
+        <div class="dash-card">
+          <h3>Send SOL</h3>
+          <form onsubmit="handleSend(event, 'send')">
+            <div class="form-group">
+              <label>Recipient Address</label>
+              <input type="text" id="send-recipient" placeholder="Solana address" required />
+            </div>
+            <div class="form-group">
+              <label>Amount (SOL)</label>
+              <input type="number" id="send-amount" step="0.001" min="0.001" placeholder="0.01" required />
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" id="send-btn">Send</button>
+          </form>
+          <div class="tx-result" id="send-result"></div>
+        </div>
+
+        <!-- Swap Card -->
+        <div class="dash-card">
+          <h3>Jupiter Swap</h3>
+          <form onsubmit="handleSwap(event)">
+            <div class="form-group">
+              <label>Token Mint Address</label>
+              <input type="text" id="swap-mint" placeholder="Token mint address" required />
+            </div>
+            <div class="form-group">
+              <label>Amount (SOL)</label>
+              <input type="number" id="swap-amount" step="0.001" min="0.001" placeholder="0.05" required />
+            </div>
+            <div class="form-group">
+              <label>Side</label>
+              <select id="swap-side">
+                <option value="buy">Buy (SOL -> Token)</option>
+                <option value="sell">Sell (Token -> SOL)</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" id="swap-btn">Execute Swap</button>
+          </form>
+          <div class="tx-result" id="swap-result"></div>
+        </div>
       </div>
     </div>
   </section>
 
   <footer>
-    SOLbot Custodial &middot; <a href="https://solana.com" target="_blank">Solana</a> &middot; <a href="https://jup.ag" target="_blank">Jupiter</a>
+    SOLbot Engine &middot; <a href="https://solana.com" target="_blank">Solana</a> &middot; <a href="https://jup.ag" target="_blank">Jupiter</a>
   </footer>
 
   <script>
     /* ══════════════════════════════════════
-       Supabase Client
-    ══════════════════════════════════════ */
-    var SUPABASE_URL = 'https://ktfnwdxrgdkrklctiexj.supabase.co';
-    var SUPABASE_ANON_KEY = 'sb_publishable_wOj6NbvDIrcM-Yt2pKbVAQ_xQJPXBP9';
-    var supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    var SOL_RPC = 'https://api.mainnet-beta.solana.com';
-
-    /* ══════════════════════════════════════
-       Base58 Codec (inline — no CDN needed)
-    ══════════════════════════════════════ */
-    var B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-    function bs58encode(buf) {
-      var bytes = Array.from(buf), digits = [0], i, j, carry, str = '';
-      for (i = 0; i < bytes.length; i++) {
-        carry = bytes[i];
-        for (j = 0; j < digits.length; j++) { carry += digits[j] << 8; digits[j] = carry % 58; carry = (carry / 58) | 0; }
-        while (carry > 0) { digits.push(carry % 58); carry = (carry / 58) | 0; }
-      }
-      for (i = 0; i < bytes.length && bytes[i] === 0; i++) str += B58[0];
-      for (i = digits.length - 1; i >= 0; i--) str += B58[digits[i]];
-      return str;
-    }
-    function bs58decode(str) {
-      var bytes = [0], i, j, carry;
-      for (i = 0; i < str.length; i++) {
-        carry = B58.indexOf(str[i]); if (carry < 0) throw new Error('Invalid base58');
-        for (j = 0; j < bytes.length; j++) { carry += bytes[j] * 58; bytes[j] = carry & 0xff; carry >>= 8; }
-        while (carry > 0) { bytes.push(carry & 0xff); carry >>= 8; }
-      }
-      for (i = 0; i < str.length && str[i] === B58[0]; i++) bytes.push(0);
-      return new Uint8Array(bytes.reverse());
-    }
-
-    /* ══════════════════════════════════════
        State
     ══════════════════════════════════════ */
-    var token = null, user = null, botWallet = null;
-    var wizStep = 1, wizPhantomAddr = null, wizKeypair = null;
+    var authToken = localStorage.getItem('solbot_token');
+    var walletAddress = localStorage.getItem('solbot_wallet');
+    var botPublicKey = null;
+    var SOL_RPC = 'https://api.mainnet-beta.solana.com';
 
     /* ══════════════════════════════════════
        Phantom Provider
@@ -534,82 +420,100 @@
     }
 
     /* ══════════════════════════════════════
+       Notification
+    ══════════════════════════════════════ */
+    function showNotification(msg, type) {
+      var el = document.getElementById('notification');
+      el.textContent = msg;
+      el.className = 'notification ' + (type || 'success');
+      setTimeout(function() { el.classList.add('show'); }, 10);
+      setTimeout(function() { el.classList.remove('show'); }, 4000);
+    }
+
+    /* ══════════════════════════════════════
        API Helper
     ══════════════════════════════════════ */
     async function api(path, opts) {
       opts = opts || {};
-      var sess = await supabaseClient.auth.getSession();
       var headers = { 'Content-Type': 'application/json' };
-      if (sess.data.session) headers['Authorization'] = 'Bearer ' + sess.data.session.access_token;
-      var res = await fetch(path, { method: opts.method || 'GET', headers: headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+      if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+      var res = await fetch(path, {
+        method: opts.method || 'GET',
+        headers: headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
       var data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Request failed');
       return data;
     }
 
     /* ══════════════════════════════════════
-       Auth (Supabase)
+       Phantom Auth
     ══════════════════════════════════════ */
-    function openAuth(e) { if (e) e.preventDefault(); document.getElementById('auth-modal').classList.add('active'); }
-    function closeAuth() { document.getElementById('auth-modal').classList.remove('active'); }
+    async function connectPhantom(e) {
+      if (e) e.preventDefault();
+      var provider = getPhantom();
+      if (!provider) {
+        showNotification('Phantom wallet not found. Install it from phantom.app', 'error');
+        return;
+      }
 
-    function switchTab(tab) {
-      document.querySelectorAll('.form-tab').forEach(function(t, i) {
-        t.classList.toggle('active', (tab === 'login' ? i === 0 : i === 1));
-      });
-      document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
-      document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
-    }
+      var btn = document.getElementById('hero-connect-btn');
+      btn.disabled = true; btn.textContent = 'Connecting...';
 
-    async function handleLogin(e) {
-      e.preventDefault();
-      var errEl = document.getElementById('login-error'); errEl.style.display = 'none';
       try {
-        var r = await supabaseClient.auth.signInWithPassword({ email: document.getElementById('login-email').value, password: document.getElementById('login-password').value });
-        if (r.error) throw r.error;
-        setSession(r.data.session);
-      } catch (err) { errEl.textContent = err.message; errEl.style.display = 'block'; }
-    }
+        // Step 1: Connect Phantom
+        var resp = await provider.connect();
+        var addr = resp.publicKey.toString();
+        btn.textContent = 'Signing message...';
 
-    async function handleRegister(e) {
-      e.preventDefault();
-      var errEl = document.getElementById('reg-error'); errEl.style.display = 'none';
-      try {
-        var r = await supabaseClient.auth.signUp({ email: document.getElementById('reg-email').value, password: document.getElementById('reg-password').value });
-        if (r.error) throw r.error;
-        if (!r.data.session) { errEl.textContent = 'Check your email for a confirmation link.'; errEl.style.color = 'var(--neon-green)'; errEl.style.display = 'block'; return; }
-        setSession(r.data.session);
-      } catch (err) { errEl.style.color = ''; errEl.textContent = err.message; errEl.style.display = 'block'; }
-    }
+        // Step 2: Sign message
+        var message = 'SOLbot Login: ' + Date.now();
+        var encodedMessage = new TextEncoder().encode(message);
+        var signResult = await provider.signMessage(encodedMessage, 'utf8');
+        var sigBytes = signResult.signature || signResult;
 
-    function setSession(session) {
-      if (!session) return;
-      token = session.access_token;
-      user = { id: session.user.id, email: session.user.email };
-      closeAuth();
-      showDashboard();
-    }
+        // Convert signature to base64
+        var sigBase64 = btoa(String.fromCharCode.apply(null, sigBytes));
 
-    async function logout() {
-      await supabaseClient.auth.signOut();
-      token = null; user = null; botWallet = null;
-      showLanding();
-    }
+        btn.textContent = 'Authenticating...';
 
-    supabaseClient.auth.onAuthStateChange(function(_ev, session) {
-      if (session) { token = session.access_token; user = { id: session.user.id, email: session.user.email }; }
-      else { token = null; user = null; botWallet = null; }
-    });
+        // Step 3: Verify on server
+        var data = await api('/api/auth/phantom', {
+          method: 'POST',
+          body: { walletAddress: addr, signature: sigBase64, message: message }
+        });
+
+        // Step 4: Save session
+        authToken = data.token;
+        walletAddress = data.walletAddress;
+        localStorage.setItem('solbot_token', authToken);
+        localStorage.setItem('solbot_wallet', walletAddress);
+
+        showNotification('Wallet connected successfully!', 'success');
+        showDashboard();
+      } catch (err) {
+        showNotification(err.message || 'Connection failed', 'error');
+        btn.disabled = false; btn.textContent = 'Connect Phantom Wallet';
+      }
+    }
 
     /* ══════════════════════════════════════
-       Bot Wallet Check (Supabase)
+       Logout
     ══════════════════════════════════════ */
-    async function checkBotWallet() {
-      try {
-        var r = await supabaseClient.from('bot_wallets').select('*').eq('user_id', user.id).single();
-        if (r.data && !r.error) { botWallet = r.data; return true; }
-      } catch (e) {}
-      return false;
+    function logout() {
+      authToken = null;
+      walletAddress = null;
+      botPublicKey = null;
+      localStorage.removeItem('solbot_token');
+      localStorage.removeItem('solbot_wallet');
+      // Disconnect Phantom if connected
+      var provider = getPhantom();
+      if (provider && provider.isConnected) {
+        try { provider.disconnect(); } catch(e) {}
+      }
+      showLanding();
+      showNotification('Logged out', 'success');
     }
 
     /* ══════════════════════════════════════
@@ -618,243 +522,147 @@
     function showLanding() {
       document.getElementById('landing').classList.remove('hidden');
       document.getElementById('dashboard').classList.remove('active');
-      document.getElementById('setup-wizard').classList.remove('active');
       document.getElementById('nav-landing-links').style.display = 'flex';
-      document.getElementById('nav-user').style.display = token ? 'flex' : 'none';
-      if (user) document.getElementById('nav-email').textContent = user.email;
+      document.getElementById('nav-user').style.display = 'none';
+      // Reset connect button
+      var btn = document.getElementById('hero-connect-btn');
+      btn.disabled = false; btn.textContent = 'Connect Phantom Wallet';
     }
 
     async function showDashboard() {
-      if (!token) { openAuth(); return; }
+      if (!authToken || !walletAddress) { showLanding(); return; }
+
+      // Update nav
       document.getElementById('nav-landing-links').style.display = 'none';
       document.getElementById('nav-user').style.display = 'flex';
-      document.getElementById('nav-email').textContent = user.email;
+      document.getElementById('nav-wallet').textContent = walletAddress.slice(0, 6) + '...' + walletAddress.slice(-4);
 
-      var hasWallet = await checkBotWallet();
-      if (!hasWallet) {
-        document.getElementById('landing').classList.add('hidden');
-        document.getElementById('dashboard').classList.remove('active');
-        document.getElementById('setup-wizard').classList.add('active');
-        resetWizard();
-        return;
-      }
+      // Show dashboard with loading
       document.getElementById('landing').classList.add('hidden');
-      document.getElementById('setup-wizard').classList.remove('active');
       document.getElementById('dashboard').classList.add('active');
-      loadBotWallet();
-    }
+      document.getElementById('dash-loading').style.display = 'block';
+      document.getElementById('dash-content').style.display = 'none';
 
-    /* ══════════════════════════════════════
-       Setup Wizard
-    ══════════════════════════════════════ */
-    function resetWizard() {
-      wizStep = 1; wizPhantomAddr = null; wizKeypair = null;
-      for (var i = 1; i <= 4; i++) {
-        document.getElementById('wiz-step-' + i).style.display = i === 1 ? 'block' : 'none';
-        document.getElementById('wiz-ind-' + i).className = 'wizard-step' + (i === 1 ? ' active' : '');
-      }
-      document.getElementById('wiz-next-btn').disabled = true;
-      document.getElementById('wiz-back-btn').style.visibility = 'hidden';
-      document.getElementById('wiz-nav').style.display = 'flex';
-      document.getElementById('wiz-phantom-btn').disabled = false;
-      document.getElementById('wiz-phantom-btn').textContent = 'Connect Phantom';
-      document.getElementById('wiz-gen-btn').disabled = false;
-      document.getElementById('wiz-gen-btn').textContent = 'Generate Bot Keypair';
-      document.getElementById('wiz-fund-btn').disabled = false;
-      document.getElementById('wiz-fund-btn').textContent = 'Transfer from Phantom';
-      ['wiz-phantom-addr','wiz-gen-addr','wiz-gen-err','wiz-fund-status','wiz-fund-err'].forEach(function(id) {
-        var el = document.getElementById(id); if (el) el.style.display = 'none';
-      });
-    }
-
-    async function wizConnectPhantom() {
-      var provider = getPhantom();
-      if (!provider) { alert('Phantom wallet not found. Please install the Phantom browser extension.'); return; }
       try {
-        var resp = await provider.connect();
-        wizPhantomAddr = resp.publicKey.toString();
-        var el = document.getElementById('wiz-phantom-addr');
-        el.textContent = 'Connected: ' + wizPhantomAddr; el.style.display = 'block';
-        document.getElementById('wiz-phantom-btn').textContent = 'Connected';
-        document.getElementById('wiz-phantom-btn').disabled = true;
-        document.getElementById('wiz-next-btn').disabled = false;
-      } catch (err) { alert('Connection rejected: ' + err.message); }
-    }
+        // Check/verify session
+        await api('/api/auth/session');
 
-    async function wizGenerateKeypair() {
-      var btn = document.getElementById('wiz-gen-btn');
-      var errEl = document.getElementById('wiz-gen-err');
-      var sucEl = document.getElementById('wiz-gen-addr');
-      btn.disabled = true; btn.textContent = 'Generating...';
-      errEl.style.display = 'none'; sucEl.style.display = 'none';
-      try {
-        wizKeypair = solanaWeb3.Keypair.generate();
-        var pubkey = wizKeypair.publicKey.toBase58();
-        var privkey = bs58encode(wizKeypair.secretKey);
-        var r = await supabaseClient.from('bot_wallets').upsert({
-          user_id: user.id, public_key: pubkey, private_key: privkey, phantom_wallet: wizPhantomAddr
-        });
-        if (r.error) throw r.error;
-        sucEl.textContent = 'Bot address: ' + pubkey; sucEl.style.display = 'block';
-        btn.textContent = 'Generated';
-        document.getElementById('wiz-next-btn').disabled = false;
+        // Check bot wallet
+        document.getElementById('dash-loading-text').textContent = 'Checking bot wallet...';
+        var wallet = await api('/api/bot-wallet');
+
+        if (!wallet.exists) {
+          // Auto-create bot wallet
+          document.getElementById('dash-loading-text').textContent = 'Creating your bot wallet...';
+          var created = await api('/api/bot-wallet', { method: 'POST' });
+          botPublicKey = created.publicKey;
+          showNotification('Bot wallet created: ' + botPublicKey.slice(0, 8) + '...', 'success');
+        } else {
+          botPublicKey = wallet.publicKey;
+        }
+
+        // Show dashboard content
+        document.getElementById('dash-loading').style.display = 'none';
+        document.getElementById('dash-content').style.display = 'block';
+        loadDashboard();
       } catch (err) {
-        errEl.textContent = 'Failed: ' + err.message; errEl.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Generate Bot Keypair';
+        if (err.message.includes('Invalid') || err.message.includes('expired') || err.message.includes('Authorization')) {
+          // Token invalid - force logout
+          logout();
+          showNotification('Session expired. Please reconnect.', 'error');
+        } else {
+          document.getElementById('dash-loading-text').textContent = 'Error: ' + err.message;
+          showNotification(err.message, 'error');
+        }
       }
-    }
-
-    async function wizTransferSol() {
-      var btn = document.getElementById('wiz-fund-btn');
-      var errEl = document.getElementById('wiz-fund-err');
-      var sucEl = document.getElementById('wiz-fund-status');
-      btn.disabled = true; btn.textContent = 'Sending...';
-      errEl.style.display = 'none'; sucEl.style.display = 'none';
-      try {
-        var amount = parseFloat(document.getElementById('wiz-fund-amount').value);
-        if (!amount || amount <= 0) throw new Error('Enter a valid amount');
-        var provider = getPhantom();
-        if (!provider || !provider.publicKey) throw new Error('Phantom not connected');
-        var connection = new solanaWeb3.Connection(SOL_RPC);
-        var tx = new solanaWeb3.Transaction().add(
-          solanaWeb3.SystemProgram.transfer({ fromPubkey: provider.publicKey, toPubkey: wizKeypair.publicKey, lamports: Math.round(amount * solanaWeb3.LAMPORTS_PER_SOL) })
-        );
-        tx.feePayer = provider.publicKey;
-        var bh = await connection.getLatestBlockhash();
-        tx.recentBlockhash = bh.blockhash;
-        var signed = await provider.signAndSendTransaction(tx);
-        sucEl.textContent = 'Sent ' + amount + ' SOL! TX: ' + signed.signature.slice(0, 24) + '...';
-        sucEl.style.display = 'block'; btn.textContent = 'Funded';
-        document.getElementById('wiz-next-btn').disabled = false;
-      } catch (err) {
-        errEl.textContent = err.message; errEl.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Transfer from Phantom';
-      }
-    }
-
-    function wizSkipFund(e) { e.preventDefault(); document.getElementById('wiz-next-btn').disabled = false; }
-
-    function wizNext() {
-      if (wizStep >= 4) return;
-      document.getElementById('wiz-step-' + wizStep).style.display = 'none';
-      document.getElementById('wiz-ind-' + wizStep).className = 'wizard-step done';
-      wizStep++;
-      document.getElementById('wiz-step-' + wizStep).style.display = 'block';
-      document.getElementById('wiz-ind-' + wizStep).className = 'wizard-step active';
-      document.getElementById('wiz-next-btn').disabled = true;
-      document.getElementById('wiz-back-btn').style.visibility = wizStep > 1 ? 'visible' : 'hidden';
-      if (wizStep === 3 && wizKeypair) document.getElementById('wiz-bot-addr').textContent = wizKeypair.publicKey.toBase58();
-      if (wizStep === 4) {
-        document.getElementById('wiz-nav').style.display = 'none';
-        if (wizKeypair) document.getElementById('wiz-final-addr').textContent = wizKeypair.publicKey.toBase58();
-      }
-    }
-
-    function wizBack() {
-      if (wizStep <= 1) return;
-      document.getElementById('wiz-step-' + wizStep).style.display = 'none';
-      document.getElementById('wiz-ind-' + wizStep).className = 'wizard-step';
-      wizStep--;
-      document.getElementById('wiz-step-' + wizStep).style.display = 'block';
-      document.getElementById('wiz-ind-' + wizStep).className = 'wizard-step active';
-      document.getElementById('wiz-next-btn').disabled = false;
-      document.getElementById('wiz-back-btn').style.visibility = wizStep > 1 ? 'visible' : 'hidden';
-      document.getElementById('wiz-nav').style.display = 'flex';
-    }
-
-    function wizFinish() {
-      if (wizKeypair) {
-        botWallet = { user_id: user.id, public_key: wizKeypair.publicKey.toBase58(), private_key: bs58encode(wizKeypair.secretKey), phantom_wallet: wizPhantomAddr };
-      }
-      document.getElementById('setup-wizard').classList.remove('active');
-      document.getElementById('dashboard').classList.add('active');
-      loadBotWallet();
     }
 
     /* ══════════════════════════════════════
        Dashboard Logic
     ══════════════════════════════════════ */
-    function loadBotWallet() {
-      if (!botWallet) return;
-      document.getElementById('dash-address').innerHTML = '<span class="dash-address">' + botWallet.public_key + '</span>';
-      var ph = botWallet.phantom_wallet;
-      document.getElementById('dash-phantom').innerHTML = '<span class="dash-address">' + (ph ? ph.slice(0,8) + '...' + ph.slice(-4) : '--') + '</span>';
-      refreshBotBalance();
+    function loadDashboard() {
+      if (!botPublicKey) return;
+      document.getElementById('dash-bot-address').innerHTML = '<span class="dash-address">' + botPublicKey + '</span>';
+      document.getElementById('dash-phantom').innerHTML = '<span class="dash-address">' + walletAddress.slice(0, 8) + '...' + walletAddress.slice(-4) + '</span>';
+      refreshBalance();
     }
 
-    async function refreshBotBalance() {
-      if (!botWallet) return;
+    async function refreshBalance() {
+      if (!botPublicKey) return;
       document.getElementById('dash-balance').textContent = 'Loading...';
       try {
         var conn = new solanaWeb3.Connection(SOL_RPC);
-        var bal = await conn.getBalance(new solanaWeb3.PublicKey(botWallet.public_key));
+        var bal = await conn.getBalance(new solanaWeb3.PublicKey(botPublicKey));
         document.getElementById('dash-balance').textContent = (bal / solanaWeb3.LAMPORTS_PER_SOL).toFixed(4) + ' SOL';
-      } catch (e) { document.getElementById('dash-balance').textContent = 'Error'; }
+      } catch (e) {
+        document.getElementById('dash-balance').textContent = 'Error';
+      }
     }
 
     function copyBotAddress() {
-      if (!botWallet) return;
-      navigator.clipboard.writeText(botWallet.public_key).then(function() {
+      if (!botPublicKey) return;
+      navigator.clipboard.writeText(botPublicKey).then(function() {
         var btn = document.getElementById('copy-addr-btn');
-        btn.textContent = 'Copied!'; setTimeout(function() { btn.textContent = 'Copy Address'; }, 1500);
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy Address'; }, 1500);
       });
     }
 
     async function addFundsPhantom() {
       var provider = getPhantom();
-      if (!provider) { navigator.clipboard.writeText(botWallet.public_key); alert('Phantom not detected. Address copied to clipboard:\n' + botWallet.public_key); return; }
+      if (!provider) {
+        navigator.clipboard.writeText(botPublicKey);
+        showNotification('Address copied! Send SOL manually.', 'success');
+        return;
+      }
       var amount = prompt('Amount of SOL to transfer from Phantom:', '0.05');
       if (!amount || parseFloat(amount) <= 0) return;
       try {
         await provider.connect();
         var conn = new solanaWeb3.Connection(SOL_RPC);
         var tx = new solanaWeb3.Transaction().add(
-          solanaWeb3.SystemProgram.transfer({ fromPubkey: provider.publicKey, toPubkey: new solanaWeb3.PublicKey(botWallet.public_key), lamports: Math.round(parseFloat(amount) * solanaWeb3.LAMPORTS_PER_SOL) })
+          solanaWeb3.SystemProgram.transfer({
+            fromPubkey: provider.publicKey,
+            toPubkey: new solanaWeb3.PublicKey(botPublicKey),
+            lamports: Math.round(parseFloat(amount) * solanaWeb3.LAMPORTS_PER_SOL)
+          })
         );
         tx.feePayer = provider.publicKey;
-        var bh = await conn.getLatestBlockhash(); tx.recentBlockhash = bh.blockhash;
+        var bh = await conn.getLatestBlockhash();
+        tx.recentBlockhash = bh.blockhash;
         var signed = await provider.signAndSendTransaction(tx);
-        alert('Sent! TX: ' + signed.signature); setTimeout(refreshBotBalance, 3000);
-      } catch (err) { alert('Transfer failed: ' + err.message); }
+        showNotification('Sent ' + amount + ' SOL! TX: ' + signed.signature.slice(0, 16) + '...', 'success');
+        setTimeout(refreshBalance, 3000);
+      } catch (err) {
+        showNotification('Transfer failed: ' + err.message, 'error');
+      }
     }
 
-    /* ── Withdraw (bot signs — no Phantom popup) ── */
-    async function handleWithdraw(e) {
+    /* ── Send / Withdraw (both use backend /api/trade/send) ── */
+    async function handleSend(e, type) {
       e.preventDefault();
-      var btn = document.getElementById('withdraw-btn'), result = document.getElementById('withdraw-result');
-      btn.disabled = true; btn.textContent = 'Withdrawing...'; result.style.display = 'none';
-      try {
-        var dest = document.getElementById('withdraw-dest').value.trim();
-        var amount = parseFloat(document.getElementById('withdraw-amount').value);
-        if (!dest || !amount) throw new Error('Fill in all fields');
-        var secretKey = bs58decode(botWallet.private_key);
-        var keypair = solanaWeb3.Keypair.fromSecretKey(secretKey);
-        var conn = new solanaWeb3.Connection(SOL_RPC);
-        var tx = new solanaWeb3.Transaction().add(
-          solanaWeb3.SystemProgram.transfer({ fromPubkey: keypair.publicKey, toPubkey: new solanaWeb3.PublicKey(dest), lamports: Math.round(amount * solanaWeb3.LAMPORTS_PER_SOL) })
-        );
-        tx.feePayer = keypair.publicKey;
-        var bh = await conn.getLatestBlockhash(); tx.recentBlockhash = bh.blockhash;
-        tx.sign(keypair);
-        var sig = await conn.sendRawTransaction(tx.serialize());
-        await conn.confirmTransaction(sig);
-        result.className = 'tx-result success'; result.style.display = 'block'; result.textContent = 'TX: ' + sig;
-        refreshBotBalance();
-      } catch (err) { result.className = 'tx-result error'; result.style.display = 'block'; result.textContent = err.message; }
-      btn.disabled = false; btn.textContent = 'Withdraw';
-    }
+      var isWithdraw = type === 'withdraw';
+      var recipientEl = document.getElementById(isWithdraw ? 'withdraw-dest' : 'send-recipient');
+      var amountEl = document.getElementById(isWithdraw ? 'withdraw-amount' : 'send-amount');
+      var btn = document.getElementById(isWithdraw ? 'withdraw-btn' : 'send-btn');
+      var result = document.getElementById(isWithdraw ? 'withdraw-result' : 'send-result');
+      var label = isWithdraw ? 'Withdraw' : 'Send';
 
-    /* ── Send SOL (backend) ── */
-    async function handleSend(e) {
-      e.preventDefault();
-      var btn = document.getElementById('send-btn'), result = document.getElementById('send-result');
-      btn.disabled = true; btn.textContent = 'Sending...'; result.style.display = 'none';
+      btn.disabled = true; btn.textContent = label === 'Withdraw' ? 'Withdrawing...' : 'Sending...';
+      result.style.display = 'none';
       try {
-        var data = await api('/api/trade/send', { method: 'POST', body: { recipient: document.getElementById('send-recipient').value.trim(), amount: Number(document.getElementById('send-amount').value) }});
-        result.className = 'tx-result success'; result.style.display = 'block'; result.textContent = 'TX: ' + data.signature;
-        refreshBotBalance();
-      } catch (err) { result.className = 'tx-result error'; result.style.display = 'block'; result.textContent = err.message; }
-      btn.disabled = false; btn.textContent = 'Send';
+        var data = await api('/api/trade/send', {
+          method: 'POST',
+          body: { recipient: recipientEl.value.trim(), amount: Number(amountEl.value) }
+        });
+        result.className = 'tx-result success'; result.style.display = 'block';
+        result.textContent = 'TX: ' + data.signature;
+        refreshBalance();
+      } catch (err) {
+        result.className = 'tx-result error'; result.style.display = 'block';
+        result.textContent = err.message;
+      }
+      btn.disabled = false; btn.textContent = label;
     }
 
     /* ── Swap (backend) ── */
@@ -863,10 +671,21 @@
       var btn = document.getElementById('swap-btn'), result = document.getElementById('swap-result');
       btn.disabled = true; btn.textContent = 'Executing...'; result.style.display = 'none';
       try {
-        var data = await api('/api/trade/swap', { method: 'POST', body: { tokenMint: document.getElementById('swap-mint').value.trim(), amount: Number(document.getElementById('swap-amount').value), side: document.getElementById('swap-side').value }});
-        result.className = 'tx-result success'; result.style.display = 'block'; result.textContent = 'TX: ' + data.signature;
-        refreshBotBalance();
-      } catch (err) { result.className = 'tx-result error'; result.style.display = 'block'; result.textContent = err.message; }
+        var data = await api('/api/trade/swap', {
+          method: 'POST',
+          body: {
+            tokenMint: document.getElementById('swap-mint').value.trim(),
+            amount: Number(document.getElementById('swap-amount').value),
+            side: document.getElementById('swap-side').value
+          }
+        });
+        result.className = 'tx-result success'; result.style.display = 'block';
+        result.textContent = 'TX: ' + data.signature;
+        refreshBalance();
+      } catch (err) {
+        result.className = 'tx-result error'; result.style.display = 'block';
+        result.textContent = err.message;
+      }
       btn.disabled = false; btn.textContent = 'Execute Swap';
     }
 
@@ -909,14 +728,18 @@
     }
     fetchPrice(); setInterval(fetchPrice, 30000);
 
-    /* ── Init: Restore Supabase session ── */
+    /* ── Init: Restore session ── */
     (async function() {
-      var r = await supabaseClient.auth.getSession();
-      if (r.data.session) {
-        token = r.data.session.access_token;
-        user = { id: r.data.session.user.id, email: r.data.session.user.email };
-        document.getElementById('nav-user').style.display = 'flex';
-        document.getElementById('nav-email').textContent = user.email;
+      if (authToken && walletAddress) {
+        try {
+          await api('/api/auth/session');
+          showDashboard();
+        } catch(e) {
+          // Token invalid, clear session
+          localStorage.removeItem('solbot_token');
+          localStorage.removeItem('solbot_wallet');
+          authToken = null; walletAddress = null;
+        }
       }
     })();
   </script>
