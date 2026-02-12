@@ -1,23 +1,15 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "./supabase-config";
 import { Keypair } from "@solana/web3.js";
 import bs58 from "bs58";
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "https://ktfnwdxrgdkrklctiexj.supabase.co";
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "sb_publishable_wOj6NbvDIrcM-Yt2pKbVAQ_xQJPXBP9";
-
 /**
- * Fetch the bot wallet keypair from Supabase for a given user.
- * Requires the user's Supabase access token (for RLS).
+ * Fetch the bot wallet keypair from Supabase for a given phantom wallet address.
  */
-export async function getBotKeypair(accessToken: string, userId: string): Promise<Keypair> {
-  const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
-
-  const { data, error } = await client
+export async function getBotKeypair(walletAddress: string): Promise<Keypair> {
+  const { data, error } = await supabase
     .from("bot_wallets")
     .select("private_key")
-    .eq("user_id", userId)
+    .eq("wallet_address", walletAddress)
     .single();
 
   if (error || !data?.private_key) {

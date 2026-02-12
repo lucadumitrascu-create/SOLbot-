@@ -1,80 +1,80 @@
 import express, { Request, Response, NextFunction } from "express";
 import path from "path";
+import crypto from "crypto";
 import { config } from "./config";
 import { getConnection } from "./wallet";
 import { supabase } from "./supabase-config";
-import { storePrivateKey, getUser, removePrivateKey, ensureLocalUser } from "./store";
-import { getUserBalance, custodialSendSol, custodialSwap, validatePrivateKey } from "./custodial";
 import { getBotKeypair } from "./bot-wallet";
 import { sendSol, swapWithJupiter } from "./trader";
-import { Connection, Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import bs58 from "bs58";
 
 const app = express();
 app.use(express.json());
-
-// Serve landing page
 app.use(express.static(path.resolve(__dirname, "..")));
 
-let connection: Connection;
-
 // ══════════════════════════════════════════
-//  Auth Middleware (Supabase)
+//  Token Utils (HMAC-SHA256 signed)
 // ══════════════════════════════════════════
 
-interface AuthPayload {
-  userId: string;
-  email: string;
+function createToken(wallet: string): string {
+  const payload = Buffer.from(JSON.stringify({ wallet, iat: Date.now() })).toString("base64url");
+  const sig = crypto.createHmac("sha256", config.jwtSecret).update(payload).digest("base64url");
+  return payload + "." + sig;
 }
+
+function verifyToken(token: string): { wallet: string; iat: number } | null {
+  const idx = token.lastIndexOf(".");
+  if (idx < 0) return null;
+  const payload = token.slice(0, idx);
+  const sig = token.slice(idx + 1);
+  const expected = crypto.createHmac("sha256", config.jwtSecret).update(payload).digest("base64url");
+  const sigBuf = Buffer.from(sig);
+  const expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length) return null;
+  if (!crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+  try {
+    return JSON.parse(Buffer.from(payload, "base64url").toString());
+  } catch {
+    return null;
+  }
+}
+
+// ══════════════════════════════════════════
+//  Ed25519 Signature Verification
+// ══════════════════════════════════════════
+
+const ED25519_DER_PREFIX = Buffer.from("302a300506032b6570032100", "hex");
+
+function verifyEd25519(message: Buffer, signature: Buffer, publicKey: Buffer): boolean {
+  try {
+    return crypto.verify(null, message, {
+      key: Buffer.concat([ED25519_DER_PREFIX, publicKey]),
+      format: "der",
+      type: "spki",
+    }, signature);
+  } catch {
+    return false;
+  }
+}
+
+// ══════════════════════════════════════════
+//  Auth Middleware (Phantom Wallet)
+// ══════════════════════════════════════════
 
 interface AuthRequest extends Request {
-  user?: AuthPayload;
-  accessToken?: string;
+  wallet?: string;
 }
 
-async function authRequired(req: AuthRequest, res: Response, next: NextFunction) {
-  try {
-    const header = req.headers.authorization;
-    if (!header || !header.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Authorization required" });
-    }
-    const accessToken = header.slice(7);
-
-    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
-    if (error || !user) {
-      return res.status(401).json({ error: "Invalid or expired token" });
-    }
-
-    // Auto-create local user record if needed
-    ensureLocalUser(user.id, user.email || "");
-
-    req.user = { userId: user.id, email: user.email || "" };
-    req.accessToken = accessToken;
-    next();
-  } catch {
-    res.status(401).json({ error: "Authentication failed" });
+function authRequired(req: AuthRequest, res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Authorization required" });
   }
-}
-
-// ══════════════════════════════════════════
-//  Keypair Resolver (Supabase bot_wallets → local store fallback)
-// ══════════════════════════════════════════
-
-async function resolveKeypair(req: AuthRequest): Promise<Keypair> {
-  const { userId } = req.user!;
-  const accessToken = req.accessToken!;
-
-  // Try Supabase bot_wallets first
-  try {
-    return await getBotKeypair(accessToken, userId);
-  } catch {
-    // Fallback to local store (custodial.ts loadKeypair)
-  }
-
-  // Fallback: load from local store via custodial module
-  const { getUserKey } = await import("./store");
-  const bs58 = (await import("bs58")).default;
-  const keyBase58 = getUserKey(userId);
-  return Keypair.fromSecretKey(bs58.decode(keyBase58));
+  const data = verifyToken(header.slice(7));
+  if (!data) return res.status(401).json({ error: "Invalid or expired token" });
+  req.wallet = data.wallet;
+  next();
 }
 
 // ══════════════════════════════════════════
@@ -85,59 +85,84 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", network: config.network, uptime: process.uptime() });
 });
 
-// ══════════════════════════════════════════
-//  Protected Routes (require Supabase auth)
-// ══════════════════════════════════════════
-
-// ── Store private key ──
-app.post("/api/vault/key", authRequired, (req: AuthRequest, res: Response) => {
+// ── Phantom Auth: verify signature → upsert user → return token ──
+app.post("/api/auth/phantom", async (req: Request, res: Response) => {
   try {
-    const { privateKey } = req.body;
-    if (!privateKey) {
-      return res.status(400).json({ error: "privateKey required" });
+    const { walletAddress, signature, message } = req.body;
+    if (!walletAddress || !signature || !message) {
+      return res.status(400).json({ error: "walletAddress, signature, and message required" });
     }
-    const publicAddress = validatePrivateKey(privateKey);
-    storePrivateKey(req.user!.userId, privateKey, publicAddress);
-    res.json({ publicAddress, message: "Key encrypted and stored" });
+
+    const pubkeyBytes = new PublicKey(walletAddress).toBytes();
+    const messageBytes = Buffer.from(message, "utf8");
+    const signatureBytes = Buffer.from(signature, "base64");
+
+    const isValid = verifyEd25519(messageBytes, signatureBytes, Buffer.from(pubkeyBytes));
+    if (!isValid) {
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    // Upsert user in Supabase
+    await supabase.from("users").upsert(
+      { wallet_address: walletAddress },
+      { onConflict: "wallet_address" }
+    );
+
+    const token = createToken(walletAddress);
+    res.json({ token, walletAddress });
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ── Remove stored key ──
-app.delete("/api/vault/key", authRequired, (req: AuthRequest, res: Response) => {
+// ── Verify Session ──
+app.get("/api/auth/session", authRequired, (req: AuthRequest, res: Response) => {
+  res.json({ walletAddress: req.wallet });
+});
+
+// ══════════════════════════════════════════
+//  Protected Routes
+// ══════════════════════════════════════════
+
+// ── Get Bot Wallet ──
+app.get("/api/bot-wallet", authRequired, async (req: AuthRequest, res: Response) => {
   try {
-    removePrivateKey(req.user!.userId);
-    res.json({ message: "Key removed" });
+    const { data, error } = await supabase
+      .from("bot_wallets")
+      .select("public_key, created_at")
+      .eq("wallet_address", req.wallet!)
+      .single();
+    if (error || !data) return res.json({ exists: false });
+    res.json({ exists: true, publicKey: data.public_key, createdAt: data.created_at });
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ── Get profile + wallet ──
-app.get("/api/me", authRequired, async (req: AuthRequest, res: Response) => {
+// ── Create Bot Wallet (auto-generate keypair) ──
+app.post("/api/bot-wallet", authRequired, async (req: AuthRequest, res: Response) => {
   try {
-    const user = getUser(req.user!.userId);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    let balance = null;
-    if (user.privateKey) {
-      try {
-        const info = await getUserBalance(req.user!.userId);
-        balance = info.balance;
-      } catch {
-        balance = null;
-      }
+    const { data: existing } = await supabase
+      .from("bot_wallets")
+      .select("public_key")
+      .eq("wallet_address", req.wallet!)
+      .single();
+    if (existing) {
+      return res.json({ publicKey: existing.public_key, message: "Wallet already exists" });
     }
 
-    res.json({
-      id: user.id,
-      email: user.email,
-      publicAddress: user.publicAddress,
-      hasKey: !!user.privateKey,
-      balance,
-      network: config.network,
+    const keypair = Keypair.generate();
+    const publicKey = keypair.publicKey.toBase58();
+    const privateKey = bs58.encode(keypair.secretKey);
+
+    const { error } = await supabase.from("bot_wallets").insert({
+      wallet_address: req.wallet!,
+      public_key: publicKey,
+      private_key: privateKey,
     });
+    if (error) throw error;
+
+    res.json({ publicKey, message: "Bot wallet created" });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -150,7 +175,7 @@ app.post("/api/trade/send", authRequired, async (req: AuthRequest, res: Response
     if (!recipient || !amount) {
       return res.status(400).json({ error: "recipient and amount required" });
     }
-    const keypair = await resolveKeypair(req);
+    const keypair = await getBotKeypair(req.wallet!);
     const conn = getConnection();
     const sig = await sendSol(conn, keypair, recipient, Number(amount));
     res.json({ signature: sig });
@@ -166,7 +191,7 @@ app.post("/api/trade/swap", authRequired, async (req: AuthRequest, res: Response
     if (!tokenMint || !amount || !side) {
       return res.status(400).json({ error: "tokenMint, amount, and side required" });
     }
-    const keypair = await resolveKeypair(req);
+    const keypair = await getBotKeypair(req.wallet!);
     const conn = getConnection();
     const sig = await swapWithJupiter(conn, keypair, {
       tokenMint,
@@ -179,10 +204,10 @@ app.post("/api/trade/swap", authRequired, async (req: AuthRequest, res: Response
   }
 });
 
-// ── Wallet balance ──
+// ── Wallet Balance ──
 app.get("/api/trade/balance", authRequired, async (req: AuthRequest, res: Response) => {
   try {
-    const keypair = await resolveKeypair(req);
+    const keypair = await getBotKeypair(req.wallet!);
     const conn = getConnection();
     const balance = await conn.getBalance(keypair.publicKey);
     res.json({
@@ -205,11 +230,11 @@ app.get("*", (_req, res) => {
 const PORT = Number(process.env.PORT || 3000);
 
 async function start() {
-  console.log("\n  SOLbot - Custodial Trading Engine\n");
-  connection = getConnection();
+  console.log("\n  SOLbot - Trading Engine\n");
+  getConnection();
   console.log(`  Network   : ${config.network}`);
-  console.log(`  Auth      : Supabase`);
-  console.log(`  Storage   : Local (operator-controlled)`);
+  console.log(`  Auth      : Phantom Wallet`);
+  console.log(`  Storage   : Supabase`);
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`  Dashboard : http://localhost:${PORT}`);
